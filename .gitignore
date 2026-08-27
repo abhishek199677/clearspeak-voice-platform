@@ -1,0 +1,70 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+*.log
+logs/
+
+# Audio files
+*.wav
+*.mp3
+*.ogg
+
+# Monitoring data
+monitoring/data/
+prometheus/
+grafana/
+
+# Test
+.coverage
+htmlcov/
+.pytest_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+
+# Vite build output
+frontend-app/dist/
+
+# Binary tools (too large for git)
+tools/*.dmg
+tools/voicebox/
+tools/call-translator/
+tools/OmniVoice-Studio/
+
+# Old frontend (replaced by frontend-app)
+frontend/
+
+# Infrastructure (single config, not maintained)
+infrastructure/
+
+# Compiled
+*.pyc
+*.pyo

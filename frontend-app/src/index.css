@@ -1,0 +1,273 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #6C3CE1;
+  --color-primary-dark: #5A2DC0;
+  --color-secondary: #FF6B35;
+  --color-accent: #00D4AA;
+  --color-dark: #08080D;
+  --color-dark-light: #0F0F17;
+  --color-dark-card: #16161F;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #08080D;
+  color: white;
+  overflow-x: hidden;
+  line-height: 1.6;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #6C3CE1 0%, #9B6DFF 50%, #FF6B35 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-alt {
+  background: linear-gradient(135deg, #00D4AA 0%, #6C3CE1 50%, #FF6B35 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glass effect */
+.glass {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(108, 60, 225, 0.2);
+  box-shadow: 0 8px 32px rgba(108, 60, 225, 0.1), inset 0 1px 0 rgba(255,255,255,0.05);
+  transform: translateY(-2px);
+}
+
+/* Gradient blob animation */
+@keyframes blobFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(30px, -30px) scale(1.05); }
+  50% { transform: translate(-20px, 20px) scale(0.95); }
+  75% { transform: translate(20px, 10px) scale(1.02); }
+}
+
+.gradient-blob {
+  animation: blobFloat 20s ease-in-out infinite;
+}
+
+.gradient-blob-delayed {
+  animation: blobFloat 25s ease-in-out infinite;
+  animation-delay: -5s;
+}
+
+/* Shimmer effect for cards */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.03) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+/* Pulse glow */
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.3; }
+}
+
+.pulse-glow {
+  animation: pulseGlow 4s ease-in-out infinite;
+}
+
+/* Gradient border */
+.gradient-border {
+  position: relative;
+}
+
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(108,60,225,0.3), rgba(255,107,53,0.1), transparent);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.gradient-border:hover::before {
+  opacity: 1;
+}
+
+/* Marquee */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.marquee {
+  animation: marquee 40s linear infinite;
+}
+
+.marquee-reverse {
+  animation: marquee-reverse 40s linear infinite;
+}
+
+@keyframes marquee-reverse {
+  0% { transform: translateX(-50%); }
+  100% { transform: translateX(0); }
+}
+
+/* Typing indicator */
+@keyframes typing {
+  0%, 60%, 100% { opacity: 0.2; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-4px); }
+}
+
+.typing-dot:nth-child(1) { animation: typing 1.4s infinite 0s; }
+.typing-dot:nth-child(2) { animation: typing 1.4s infinite 0.2s; }
+.typing-dot:nth-child(3) { animation: typing 1.4s infinite 0.4s; }
+
+/* Card hover effect */
+.card-hover {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(108, 60, 225, 0.15);
+  border-color: rgba(108, 60, 225, 0.2);
+}
+
+/* Line clamp */
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Section divider */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+  margin: 0 auto;
+  max-width: 70%;
+}
+
+/* Subtle glow */
+.glow-subtle {
+  box-shadow: 0 0 80px rgba(108, 60, 225, 0.08);
+}
+
+.glow-purple {
+  box-shadow: 0 0 60px rgba(108, 60, 225, 0.15);
+}
+
+/* Input focus */
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: rgba(108, 60, 225, 0.5);
+  box-shadow: 0 0 0 3px rgba(108, 60, 225, 0.1);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(108, 60, 225, 0.3);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(108, 60, 225, 0.5);
+}
+
+/* Selection */
+::selection {
+  background: rgba(108, 60, 225, 0.3);
+  color: white;
+}
+
+/* Pricing toggle */
+.pricing-toggle {
+  position: relative;
+  width: 48px;
+  height: 26px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 13px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.pricing-toggle.active {
+  background: rgba(108, 60, 225, 0.4);
+}
+
+.pricing-toggle::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.3s;
+}
+
+.pricing-toggle.active::after {
+  transform: translateX(22px);
+}
