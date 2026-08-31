@@ -512,7 +512,9 @@ class OllamaLLMProvider:
             
             if response.status_code == 200:
                 data = response.json()
-                return data.get("response", "I couldn't generate a response.")
+                raw_response = data.get("response", "I couldn't generate a response.")
+                # Clean up response: remove artifacts and truncate at natural end
+                return self._clean_response(raw_response)
             else:
                 logger.error("Ollama API error", status=response.status_code)
                 return "I'm having trouble connecting to the AI model."
@@ -520,6 +522,57 @@ class OllamaLLMProvider:
         except Exception as e:
             logger.error("Ollama generation failed", error=str(e))
             return "I'm sorry, I encountered an error processing your request."
+    
+    def _clean_response(self, text: str) -> str:
+        """Clean up LLM response to remove artifacts and improve quality."""
+        # Remove common artifacts
+        text = text.strip()
+        
+        # Remove [/INST] and [INST] tags
+        text = text.replace("[/INST]", "").replace("[INST]", "").strip()
+        
+        # Remove leading labels like "AI:", "Assistant:", "Answer:" etc.
+        for prefix in ["AI: ", "Assistant: ", "Answer: ", "A: ", "Response: "]:
+            if text.startswith(prefix):
+                text = text[len(prefix):].strip()
+                break
+        
+        # Remove repeated questions/answers at the end
+        lines = text.split("\n")
+        cleaned_lines = []
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            # Skip lines that look like repeated Q&A artifacts
+            if any(line.lower().startswith(prefix) for prefix in ["question:", "q:", "user:", "human:"]):
+                break
+            if any(line.lower().startswith(prefix) for prefix in ["answer:", "a:", "assistant:"]):
+                # Remove the prefix and keep the content
+                for prefix in ["answer:", "a:", "assistant:"]:
+                    if line.lower().startswith(prefix):
+                        line = line[len(prefix):].strip()
+                        break
+            cleaned_lines.append(line)
+        
+        result = " ".join(cleaned_lines)
+        
+        # Remove trailing question/answer artifacts
+        for artifact in [" question:", " answer:", " What is", " How do"]:
+            pos = result.find(artifact)
+            if pos > 50:  # Only if we have enough content before it
+                result = result[:pos]
+        
+        # Truncate at a natural end point if too long
+        if len(result) > 300:
+            # Try to end at a sentence boundary
+            for delimiter in [". ", "! ", "? "]:
+                last_pos = result[:300].rfind(delimiter)
+                if last_pos > 200:
+                    result = result[:last_pos + 1]
+                    break
+        
+        return result if result else "I'm not sure how to respond to that."
     
     async def generate_response_stream(
         self,
@@ -622,20 +675,39 @@ class OllamaLLMProvider:
             yield "I'm sorry, I encountered an error processing your request."
     
     def _build_prompt(self, messages: List[Dict[str, str]]) -> str:
-        """Build a prompt from messages."""
-        prompt_parts = []
+        """Build a prompt from messages using Llama format for better instruction following."""
+        system_msg = ""
+        conversation = []
+        
         for msg in messages:
             role = msg.get("role", "user")
             content = msg.get("content", "")
             if role == "system":
-                prompt_parts.append(f"System: {content}")
+                system_msg = content
             elif role == "user":
-                prompt_parts.append(f"User: {content}")
+                conversation.append(("user", content))
             elif role == "assistant":
-                prompt_parts.append(f"Assistant: {content}")
+                conversation.append(("assistant", content))
         
-        prompt_parts.append("Assistant: ")
-        return "\n".join(prompt_parts)
+        # Use Llama format with system prompt in <<SYS>> tags for better instruction following
+        if system_msg:
+            prompt_parts = [f"[INST] <<SYS>>\n{system_msg}\n<</SYS>>\n\n"]
+        else:
+            prompt_parts = ["[INST] "]
+        
+        for role, content in conversation:
+            if role == "user":
+                if len(conversation) > 1 and prompt_parts[-1] != "[INST] ":
+                    prompt_parts.append(f" [/INST] ")
+                prompt_parts.append(f"{content} [/INST]")
+            elif role == "assistant":
+                prompt_parts.append(f" {content}")
+        
+        # Ensure it ends with [/INST] for the model to generate
+        if not prompt_parts[-1].endswith("[/INST]"):
+            prompt_parts.append(" [/INST]")
+        
+        return "".join(prompt_parts)
 
 
 def create_llm_provider(**kwargs) -> LLMProvider:

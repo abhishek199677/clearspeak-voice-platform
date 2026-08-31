@@ -1,31 +1,51 @@
-# Voice AI Agent Platform
+# ClearSpeak AI - India's Sovereign Communication Platform
 
-A production-grade voice AI agent platform with real-time streaming, built for Chatbucket's Voice AI Engineer role demonstration.
+**For India. By India. With India.**
+
+One App. Every Language. Limitless Possibilities.
+
+## Vision
+
+ClearSpeak AI is an indigenous (Atmanirbhar), secure, compliant, and sovereign communication platform tailored to India's scale (1.4B+ people, 22+ languages). It solves the dependency on foreign apps by providing:
+
+- **Real-time AI translation** across 22 Scheduled Languages of India
+- **Voice AI calls** with live translation
+- **Smart messaging** with language detection
+- **Enterprise/group collaboration** with multi-language support
 
 ## Architecture Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              Voice AI Platform                              │
+│                           ClearSpeak AI Platform                             │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │   ┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐             │
-│   │  Client  │────▶│WebSocket│────▶│ Pipeline│────▶│  LLM    │             │
-│   │ (Browser)│◀────│ Handler │◀────│Orchestr.│◀────│(GPT-4)  │             │
-│   └─────────┘     └─────────┘     └─────────┘     └─────────┘             │
-│        │               │               │               │                    │
-│        │               │          ┌────┴────┐     ┌────┴────┐             │
+│   │  Client  │────▶│WebSocket│────▶│Pipeline │────▶│  LLM    │             │
+│   │ (Browser)│◀────│ Handler │◀────│  with   │◀────│(GPT-4/  │             │
+│   └─────────┘     └─────────┘     │Translate│     │ Ollama) │             │
+│        │               │          └────┬────┘     └─────────┘             │
+│        │               │               │                                   │
+│        │               │          ┌────┴────┐     ┌─────────┐             │
 │        │               │          │  ASR    │     │  TTS    │             │
-│        │               │          │(Deepgram│     │(ElevenLabs)            │
-│        │               │          │ Whisper)│     │  Azure  │             │
+│        │               │          │(Deepgram│     │(ElevenLabs│            │
+│        │               │          │ Whisper)│     │ Edge TTS)│             │
 │        │               │          └─────────┘     └─────────┘             │
 │        │               │                                                   │
 │   ┌────┴───────────────┴───────────────────────────────────────────┐      │
-│   │                    Session Manager (Redis-backed)              │      │
-│   │  - Concurrent session handling                                 │      │
-│   │  - State machine management                                    │      │
-│   │  - Conversation history                                        │      │
+│   │              Translation Engine (22 Indian Languages)           │      │
+│   │  - Hindi, Bengali, Tamil, Telugu, Malayalam, Kannada          │      │
+│   │  - Gujarati, Marathi, Punjabi, Urdu, Assamese, Odia           │      │
+│   │  - Sanskrit, Konkani, Dogri, Maithili, Santali                │      │
+│   │  - Kashmiri, Manipuri, Bodo, Sindhi, Nepali                   │      │
 │   └────────────────────────────────────────────────────────────────┘      │
+│                                                                             │
+│   ┌────────────────────────────────────────────────────────────────────┐  │
+│   │                     Session Manager (Redis-backed)                 │  │
+│   │  - Concurrent session handling                                     │  │
+│   │  - State machine management                                        │  │
+│   │  - Conversation history                                            │  │
+│   └────────────────────────────────────────────────────────────────────┘  │
 │                                                                             │
 │   ┌────────────────────────────────────────────────────────────────────┐  │
 │   │                     Monitoring & Observability                     │  │
@@ -35,34 +55,60 @@ A production-grade voice AI agent platform with real-time streaming, built for C
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Features Demonstrated
+## Features
 
-### 1. Real-Time Streaming
-- WebSocket-based bidirectional audio streaming
-- Low-latency audio processing pipeline
-- Real-time transcription and synthesis
+### 1. 22 Indian Scheduled Languages
+Full support for all 22 Scheduled Languages of India:
 
-### 2. Voice Agent Orchestration
-- End-to-end pipeline: Audio → ASR → LLM → TTS → Audio
-- Session state management
-- Tool calling with function execution
+| Language | Code | Script | Speakers |
+|----------|------|--------|----------|
+| Hindi | hi | Devanagari | 600M |
+| Bengali | bn | Bengali | 97M |
+| Tamil | ta | Tamil | 85M |
+| Telugu | te | Telugu | 95M |
+| Malayalam | ml | Malayalam | 38M |
+| Kannada | kn | Kannada | 50M |
+| Gujarati | gu | Gujarati | 56M |
+| Marathi | mr | Devanagari | 99M |
+| Punjabi | pa | Gurmukhi | 113M |
+| Urdu | ur | Arabic | 70M |
+| Assamese | as | Bengali | 15M |
+| Odia | or | Odia | 38M |
+| Sanskrit | sa | Devanagari | 0.02M |
+| Konkani | gom | Devanagari | 7.6M |
+| Dogri | doi | Devanagari | 3.2M |
+| Maithili | mai | Devanagari | 52M |
+| Santali | sat | Ol Chiki | 7.4M |
+| Kashmiri | ks | Arabic | 6.8M |
+| Manipuri | mni | Meitei | 1.8M |
+| Bodo | brx | Devanagari | 1.5M |
+| Sindhi | sd | Arabic | 30M |
+| Nepali | ne | Devanagari | 25M |
 
-### 3. Multi-Provider Support
-- **ASR**: Deepgram (streaming), Whisper (local)
-- **TTS**: ElevenLabs (neural), Azure (enterprise)
-- **LLM**: OpenAI GPT-4 with function calling
+### 2. Real-Time Translation
+- Automatic language detection via Unicode script analysis
+- Cross-lingual communication (speak Hindi, get English response)
+- Translation caching for performance
+- User language preferences
 
-### 4. Production Engineering
-- Structured logging with correlation IDs
-- Prometheus metrics collection
-- Health checks and monitoring
-- Graceful error handling
+### 3. Voice AI Pipeline
+- Audio → ASR → Translation → LLM → Translation → TTS → Audio
+- Support for multiple ASR providers (Deepgram, Whisper)
+- Multiple TTS providers (ElevenLabs, Edge TTS, Azure)
+- Real-time streaming with low latency
 
-### 5. Scalability Features
-- Async/await architecture
-- Connection pooling
-- Session eviction policies
-- Redis-backed state management
+### 4. Chat & Collaboration
+- Channels (public/private/direct/group)
+- Real-time messaging with translation
+- Reactions, typing indicators, read receipts
+- Voice calls with live translation
+
+### 5. Enterprise Features
+- API key authentication
+- Rate limiting
+- Prometheus metrics
+- Structured logging
+- Redis-backed session management
 
 ## Tech Stack
 
@@ -71,51 +117,12 @@ A production-grade voice AI agent platform with real-time streaming, built for C
 | Backend | Python 3.11+, FastAPI |
 | WebSocket | FastAPI WebSocket |
 | ASR | Deepgram SDK, Whisper |
-| TTS | ElevenLabs, Azure Cognitive Services |
-| LLM | OpenAI GPT-4 |
+| TTS | ElevenLabs, Edge TTS, Azure |
+| LLM | OpenAI GPT-4, Ollama |
+| Translation | Custom engine + Call Translator |
 | Cache | Redis |
 | Monitoring | Prometheus, Grafana |
 | Container | Docker, Docker Compose |
-
-## Project Structure
-
-```
-voice-ai-platform/
-├── backend/
-│   ├── __init__.py
-│   ├── main.py              # FastAPI application
-│   ├── config.py            # Configuration management
-│   ├── core/
-│   │   ├── session.py       # Session manager
-│   │   └── pipeline.py      # Voice pipeline orchestrator
-│   ├── asr/
-│   │   └── base.py          # ASR providers (Deepgram, Whisper)
-│   ├── tts/
-│   │   └── base.py          # TTS providers (ElevenLabs, Azure)
-│   ├── llm/
-│   │   └── base.py          # LLM with tool calling
-│   ├── streaming/
-│   │   └── websocket.py     # WebSocket handler
-│   ├── monitoring/
-│   │   ├── metrics.py       # Prometheus metrics
-│   │   └── logging.py       # Structured logging
-│   └── models/
-│       └── schemas.py       # Pydantic models
-├── frontend/
-│   └── index.html           # Voice agent UI
-├── tests/
-│   └── test_pipeline.py     # Integration tests
-├── infrastructure/
-│   ├── prometheus.yml       # Prometheus config
-│   └── grafana/             # Grafana dashboards
-├── scripts/
-│   ├── setup.sh             # Development setup
-│   └── deploy.sh            # Deployment script
-├── docker-compose.yml       # Container orchestration
-├── Dockerfile               # Container build
-├── requirements.txt         # Python dependencies
-└── .env.example             # Environment template
-```
 
 ## Quick Start
 
@@ -152,11 +159,39 @@ docker-compose up -d
 docker-compose logs -f voice-api
 ```
 
-### API Keys Required
+### Environment Variables
 
-1. **Deepgram** (ASR): Get key at https://console.deepgram.com
-2. **ElevenLabs** (TTS): Get key at https://elevenlabs.io
-3. **OpenAI** (LLM): Get key at https://platform.openai.com
+```env
+# Application
+APP_NAME=ClearSpeak AI
+APP_ENV=production
+DEBUG=false
+
+# ASR
+ASR_PROVIDER=deepgram
+DEEPGRAM_API_KEY=your_key_here
+
+# TTS
+TTS_PROVIDER=edge
+# TTS_PROVIDER=elevenlabs
+# ELEVENLABS_API_KEY=your_key_here
+
+# LLM
+LLM_PROVIDER=openai
+OPENAI_API_KEY=your_key_here
+# Or use Ollama for free local inference
+# LLM_PROVIDER=ollama
+# OLLAMA_MODEL=llama3.2
+
+# Translation
+TRANSLATION_PROVIDER=local
+DEFAULT_LANGUAGE=en
+INDIA_DEFAULT_LANGUAGE=hi
+ENABLE_AUTO_TRANSLATE=true
+
+# All 22 Indian Scheduled Languages
+INDIA_LANGUAGE_CODES=hi,bn,ta,te,ml,kn,gu,mr,pa,ur,as,or,sa,gom,doi,mai,sat,ks,mni,brx,sd,ne
+```
 
 ## API Endpoints
 
@@ -167,8 +202,34 @@ docker-compose logs -f voice-api
 | POST | `/sessions` | Create session |
 | GET | `/sessions/{id}` | Get session |
 | DELETE | `/sessions/{id}` | Close session |
-| GET | `/metrics` | Prometheus metrics |
+| POST | `/translate` | Translate text |
+| GET | `/languages` | Get supported languages |
+| POST | `/user-language` | Set user language |
+| GET | `/channels` | List channels |
+| POST | `/channels` | Create channel |
+| POST | `/channels/{id}/messages` | Send message |
+| POST | `/calls` | Create voice call |
 | WS | `/ws/{session_id}` | WebSocket streaming |
+
+## Translation API
+
+### Translate Text
+
+```bash
+curl -X POST "http://localhost:8000/translate" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Hello", "target_language": "hi"}'
+
+# Response: {"translated_text": "नमस्ते", "target_language": "hi"}
+```
+
+### Get Supported Languages
+
+```bash
+curl "http://localhost:8000/languages"
+
+# Response: {"languages": {"hi": "Hindi", "bn": "Bengali", ...}}
+```
 
 ## WebSocket Protocol
 
@@ -190,7 +251,7 @@ docker-compose logs -f voice-api
 {
   "type": "text",
   "session_id": "uuid",
-  "text": "Response text",
+  "text": "Response text in user's language",
   "timestamp": "2024-01-01T00:00:00Z"
 }
 ```
@@ -218,6 +279,17 @@ docker-compose logs -f voice-api
 4. **CDN**: Serve static assets via CDN
 5. **Rate Limiting**: Implement per-client rate limiting
 
+## Roadmap
+
+- [ ] IndicTrans2 integration for production-grade translation
+- [ ] Whisper fine-tuning for Indian languages
+- [ ] Edge TTS voices for all 22 Indian languages
+- [ ] End-to-end encryption
+- [ ] Mobile apps (iOS/Android)
+- [ ] WebRTC for peer-to-peer calls
+- [ ] File sharing with translation
+- [ ] Screen sharing with live translation
+
 ## License
 
-MIT License - Created for Chatbucket Voice AI Engineer application
+MIT License - Created for India's sovereign communication needs

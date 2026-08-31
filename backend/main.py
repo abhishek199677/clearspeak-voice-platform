@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Optional, List
 import structlog
-from fastapi import FastAPI, WebSocket, HTTPException, Depends, Request
+from fastapi import FastAPI, WebSocket, HTTPException, Depends, Request, UploadFile, File, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,16 +27,25 @@ from backend.models.schemas import (
     ChatChannel, ChatMessage, MessageType, ChannelType
 )
 from backend.core.session import SessionManager
-from backend.core.pipeline import VoicePipeline
+from backend.core.pipeline import VoicePipeline, PipelineMode
 from backend.core.chat import ChatManager
 from backend.core.calls import CallManager
 from backend.core.translation import TranslationManager
+from backend.core.translation_indic import (
+    IndicTranslationProvider,
+    create_indic_translation_provider,
+    IndicTrans2Provider,
+    AzureTranslatorProvider,
+    BhashiniTranslationProvider,
+)
 from backend.core.streaming import StreamManager
 from backend.core.agents import AgentManager
 from backend.core.spatial import SpatialAwarenessManager
 from backend.streaming.websocket import VoiceWebSocketHandler
 from backend.asr.base import create_asr_provider
+from backend.asr.indic import IndicASRProvider, create_indic_asr_provider
 from backend.tts.base import create_tts_provider
+from backend.tts.indic import IndicTTSProvider, create_indic_tts_provider
 from backend.llm.base import create_llm_provider
 from backend.monitoring.metrics import MetricsCollector
 from backend.monitoring.logging import setup_logging
@@ -71,28 +80,90 @@ async def lifespan(app: FastAPI):
     
     # Initialize pipeline
     try:
-        asr_kwargs = {}
-        if settings.asr_provider == "deepgram":
-            asr_kwargs["api_key"] = settings.deepgram_api_key
-        elif settings.asr_provider == "whisper":
-            asr_kwargs["model_name"] = settings.whisper_model
-        asr = create_asr_provider(settings.asr_provider, **asr_kwargs)
+        # ASR Provider (standard or Indic)
+        asr = None
+        if settings.indic_asr_provider:
+            # Use Indic ASR provider
+            indic_asr_kwargs = {}
+            if settings.indic_asr_provider == "bhashini":
+                indic_asr_kwargs["api_key"] = settings.bhashini_api_key
+                indic_asr_kwargs["user_id"] = settings.bhashini_user_id
+            elif settings.indic_asr_provider == "ai4bharat":
+                indic_asr_kwargs["base_url"] = settings.ai4bharat_base_url
+                indic_asr_kwargs["api_key"] = settings.ai4bharat_api_key
+            elif settings.indic_asr_provider == "indic_whisper":
+                indic_asr_kwargs["model_name"] = settings.indic_whisper_model
+            
+            asr = create_indic_asr_provider(settings.indic_asr_provider, **indic_asr_kwargs)
+            logger.info("Using Indic ASR provider", provider=settings.indic_asr_provider)
+        else:
+            # Use standard ASR provider
+            asr_kwargs = {}
+            if settings.asr_provider == "deepgram":
+                asr_kwargs["api_key"] = settings.deepgram_api_key
+            elif settings.asr_provider == "whisper":
+                asr_kwargs["model_name"] = settings.whisper_model
+            asr = create_asr_provider(settings.asr_provider, **asr_kwargs)
         
-        tts_kwargs = {}
-        if settings.tts_provider == "elevenlabs":
-            tts_kwargs["api_key"] = settings.elevenlabs_api_key
-            tts_kwargs["voice_id"] = settings.elevenlabs_voice_id
-        elif settings.tts_provider == "azure":
-            pass  # Azure TTS uses default constructor
-        tts = create_tts_provider(settings.tts_provider, **tts_kwargs)
+        # TTS Provider (standard or Indic)
+        tts = None
+        if settings.indic_tts_provider:
+            # Use Indic TTS provider
+            indic_tts_kwargs = {}
+            if settings.indic_tts_provider == "azure_indic":
+                indic_tts_kwargs["subscription_key"] = settings.azure_speech_key
+                indic_tts_kwargs["region"] = settings.azure_speech_region
+                indic_tts_kwargs["gender"] = settings.indic_tts_gender
+            elif settings.indic_tts_provider == "bhashini_tts":
+                indic_tts_kwargs["api_key"] = settings.bhashini_api_key
+                indic_tts_kwargs["voice_gender"] = settings.bhashini_tts_gender
+            elif settings.indic_tts_provider == "edge_indic":
+                indic_tts_kwargs["gender"] = settings.indic_tts_gender
+            
+            tts = create_indic_tts_provider(settings.indic_tts_provider, **indic_tts_kwargs)
+            logger.info("Using Indic TTS provider", provider=settings.indic_tts_provider)
+        else:
+            # Use standard TTS provider
+            tts_kwargs = {}
+            if settings.tts_provider == "elevenlabs":
+                tts_kwargs["api_key"] = settings.elevenlabs_api_key
+                tts_kwargs["voice_id"] = settings.elevenlabs_voice_id
+            elif settings.tts_provider == "azure":
+                pass  # Azure TTS uses default constructor
+            tts = create_tts_provider(settings.tts_provider, **tts_kwargs)
         
         llm = create_llm_provider()
+        
+        # Indic Translation Provider
+        indic_translation = None
+        if settings.indic_translation_provider:
+            indic_trans_kwargs = {}
+            if settings.indic_translation_provider == "indictrans2":
+                indic_trans_kwargs["base_url"] = settings.indictrans2_url
+            elif settings.indic_translation_provider == "azure_translator":
+                indic_trans_kwargs["subscription_key"] = settings.azure_translator_key
+                indic_trans_kwargs["region"] = settings.azure_translator_region
+                indic_trans_kwargs["endpoint"] = settings.azure_translator_endpoint
+            elif settings.indic_translation_provider == "bhashini_translate":
+                indic_trans_kwargs["api_key"] = settings.bhashini_api_key
+            
+            indic_translation = create_indic_translation_provider(
+                settings.indic_translation_provider,
+                **indic_trans_kwargs
+            )
+            logger.info("Using Indic translation provider", provider=settings.indic_translation_provider)
+        
+        # Pipeline mode
+        pipeline_mode = PipelineMode.TRANSLATION if settings.default_pipeline_mode == "translation" else PipelineMode.AGENT
         
         app.state.pipeline = VoicePipeline(
             asr_provider=asr,
             tts_provider=tts,
             llm_provider=llm,
-            session_manager=app.state.session_manager
+            session_manager=app.state.session_manager,
+            translation_manager=app.state.translation_manager,
+            indic_translation_provider=indic_translation,
+            default_mode=pipeline_mode
         )
         
         await app.state.pipeline.initialize()
@@ -100,9 +171,11 @@ async def lifespan(app: FastAPI):
         
         logger.info(
             "Voice AI Platform initialized",
-            asr_provider=settings.asr_provider,
-            tts_provider=settings.tts_provider,
-            llm_model=settings.llm_model
+            asr_provider=settings.indic_asr_provider or settings.asr_provider,
+            tts_provider=settings.indic_tts_provider or settings.tts_provider,
+            llm_model=settings.llm_model,
+            translation_provider=settings.indic_translation_provider or settings.translation_provider,
+            pipeline_mode=pipeline_mode.value
         )
     except Exception as e:
         logger.error("Failed to initialize pipeline", error=str(e))
@@ -168,18 +241,45 @@ async def root():
 
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
-    """Health check endpoint."""
+    """Health check endpoint with provider status."""
     uptime = (datetime.now(timezone.utc) - START_TIME).total_seconds()
     
     return HealthResponse(
         status="healthy",
-        version="1.0.0",
+        version="2.0.0",
         uptime_seconds=uptime,
         active_sessions=await app.state.session_manager.get_active_sessions_count(),
-        asr_provider=settings.asr_provider,
-        tts_provider=settings.tts_provider,
+        asr_provider=settings.indic_asr_provider or settings.asr_provider,
+        tts_provider=settings.indic_tts_provider or settings.tts_provider,
         llm_model=settings.ollama_model if settings.llm_provider == "ollama" else settings.llm_model
     )
+
+
+@app.get("/providers")
+async def get_providers():
+    """Get active provider configuration."""
+    return {
+        "asr": {
+            "standard": settings.asr_provider,
+            "indic": settings.indic_asr_provider,
+            "active": settings.indic_asr_provider or settings.asr_provider,
+        },
+        "tts": {
+            "standard": settings.tts_provider,
+            "indic": settings.indic_tts_provider,
+            "active": settings.indic_tts_provider or settings.tts_provider,
+        },
+        "llm": {
+            "provider": settings.llm_provider,
+            "model": settings.ollama_model if settings.llm_provider == "ollama" else settings.llm_model,
+        },
+        "translation": {
+            "standard": settings.translation_provider,
+            "indic": settings.indic_translation_provider,
+            "active": settings.indic_translation_provider or settings.translation_provider,
+        },
+        "pipeline_mode": settings.default_pipeline_mode,
+    }
 
 
 @app.get("/metrics", response_class=HTMLResponse)
@@ -233,7 +333,7 @@ async def get_stats():
         "active_sessions": await session_manager.get_active_sessions_count(),
         "total_sessions": 0,
         "total_errors": 0,
-        "uptime_seconds": (datetime.utcnow() - START_TIME).total_seconds()
+        "uptime_seconds": (datetime.now(timezone.utc) - START_TIME).total_seconds()
     }
 
 
@@ -243,7 +343,7 @@ async def get_stats():
 async def list_channels(user_id: Optional[str] = None):
     """List all channels."""
     channels = await app.state.chat_manager.list_channels(user_id)
-    return {"channels": [ch.model_dump() for ch in channels]}
+    return {"channels": [ch.model_dump(mode='json') for ch in channels]}
 
 
 @app.post("/channels", response_model=dict)
@@ -260,7 +360,7 @@ async def create_channel(
         description=description,
         channel_type=channel_type
     )
-    return channel.model_dump()
+    return channel.model_dump(mode='json')
 
 
 @app.get("/channels/{channel_id}")
@@ -269,7 +369,7 @@ async def get_channel(channel_id: str):
     channel = await app.state.chat_manager.get_channel(channel_id)
     if not channel:
         raise HTTPException(status_code=404, detail="Channel not found")
-    return channel.model_dump()
+    return channel.model_dump(mode='json')
 
 
 @app.post("/channels/{channel_id}/join")
@@ -304,7 +404,7 @@ async def get_messages(
         before=before,
         after=after
     )
-    return {"messages": [msg.model_dump() for msg in messages]}
+    return {"messages": [msg.model_dump(mode='json') for msg in messages]}
 
 
 @app.post("/channels/{channel_id}/messages", response_model=dict)
@@ -327,7 +427,7 @@ async def send_message(
     )
     if not message:
         raise HTTPException(status_code=404, detail="Channel not found")
-    return message.model_dump()
+    return message.model_dump(mode='json')
 
 
 @app.put("/channels/{channel_id}/messages/{message_id}")
@@ -404,14 +504,14 @@ async def remove_reaction(
 async def get_typing_users(channel_id: str):
     """Get users currently typing in a channel."""
     typing_users = await app.state.chat_manager.get_typing_users(channel_id)
-    return {"typing": [t.model_dump() for t in typing_users]}
+    return {"typing": [t.model_dump(mode='json') for t in typing_users]}
 
 
 @app.get("/users/online")
 async def get_online_users():
     """Get all online users."""
     users = await app.state.chat_manager.get_online_users()
-    return {"users": [u.model_dump() for u in users]}
+    return {"users": [u.model_dump(mode='json') for u in users]}
 
 
 # Voice Call Endpoints
@@ -542,6 +642,80 @@ async def get_user_language(user_id: str):
     """Get preferred language for a user."""
     language = app.state.translation_manager.get_user_language(user_id)
     return {"user_id": user_id, "language": language}
+
+
+# Indic Translation Endpoints
+
+@app.post("/translate/indic")
+async def translate_indic_text(
+    text: str,
+    source_language: str,
+    target_language: str
+):
+    """
+    Translate text using Indic translation providers.
+    
+    Supports all 22 Scheduled Languages of India via IndicTrans2,
+    Azure Translator, or Bhashini.
+    """
+    if not app.state.pipeline:
+        raise HTTPException(status_code=503, detail="Pipeline not initialized")
+    
+    translated = await app.state.pipeline.translate_text(
+        text, source_language, target_language
+    )
+    
+    return {
+        "translated_text": translated,
+        "source_language": source_language,
+        "target_language": target_language,
+        "provider": settings.indic_translation_provider or "local"
+    }
+
+
+@app.get("/languages/indic")
+async def get_indic_languages():
+    """Get all 22 Scheduled Languages of India."""
+    if app.state.translation_manager:
+        india_langs = app.state.translation_manager.get_india_languages()
+        return {"languages": india_langs}
+    return {"languages": {}}
+
+
+@app.post("/translation-mode/set")
+async def set_translation_languages(
+    session_id: str,
+    source_language: str,
+    target_language: str
+):
+    """
+    Set languages for real-time translation mode (S2ST).
+    
+    Once set, the pipeline will translate audio from source to target language.
+    """
+    if not app.state.pipeline:
+        raise HTTPException(status_code=503, detail="Pipeline not initialized")
+    
+    await app.state.pipeline.set_translation_languages(
+        session_id, source_language, target_language
+    )
+    
+    return {
+        "session_id": session_id,
+        "source_language": source_language,
+        "target_language": target_language,
+        "mode": "translation"
+    }
+
+
+@app.get("/translation-mode/{session_id}")
+async def get_translation_info(session_id: str):
+    """Get current translation session info."""
+    if not app.state.pipeline:
+        raise HTTPException(status_code=503, detail="Pipeline not initialized")
+    
+    info = await app.state.pipeline.get_translation_info(session_id)
+    return {"session_id": session_id, "translation_info": info}
 
 
 # Live Streaming Endpoints
@@ -780,8 +954,8 @@ async def get_nearby_objects(x: float, y: float, z: float, radius: float = 10.0)
 
 @app.post("/clone-voice")
 async def clone_voice(
-    audio: bytes = None,
-    text: str = "Hello, this is a test of voice cloning."
+    audio: UploadFile = File(...),
+    text: str = Form("Hello, this is a test of voice cloning.")
 ):
     """
     Clone a voice from uploaded audio and synthesize text.
@@ -794,7 +968,35 @@ async def clone_voice(
     import os
     from fastapi.responses import StreamingResponse
     
-    if not app.state.pipeline or not hasattr(app.state.pipeline.tts, 'synthesize_with_clone'):
+    # Get or initialize TTS provider for cloning (cache on app.state)
+    tts_provider = None
+    if app.state.pipeline and hasattr(app.state.pipeline.tts, 'synthesize_with_clone'):
+        tts_provider = app.state.pipeline.tts
+    elif hasattr(app.state, 'clone_tts_provider') and app.state.clone_tts_provider:
+        # Reuse cached TTS provider
+        tts_provider = app.state.clone_tts_provider
+    else:
+        # Initialize TTS once and cache it
+        try:
+            if settings.tts_provider == "coqui":
+                from backend.tts.base import create_tts_provider
+                tts_provider = create_tts_provider("coqui")
+                await tts_provider.initialize()
+                app.state.clone_tts_provider = tts_provider
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Voice cloning requires Coqui TTS provider. Current provider: {settings.tts_provider}. Set TTS_PROVIDER=coqui in .env"
+                )
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to initialize TTS for cloning: {str(e)}"
+            )
+    
+    if not tts_provider or not hasattr(tts_provider, 'synthesize_with_clone'):
         raise HTTPException(
             status_code=400,
             detail="Voice cloning requires Coqui TTS provider. Set TTS_PROVIDER=coqui in .env"
@@ -803,28 +1005,34 @@ async def clone_voice(
     if not audio:
         raise HTTPException(status_code=400, detail="Audio sample required for voice cloning")
     
+    if not text or not text.strip():
+        raise HTTPException(status_code=400, detail="Text to synthesize is required")
+    
+    # Read audio bytes from the uploaded file
+    audio_bytes = await audio.read()
+    
     # Save audio to temp file
     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
-        tmp.write(audio)
+        tmp.write(audio_bytes)
         tmp_path = tmp.name
     
-    try:
-        # Clone voice and synthesize
-        async def generate_audio():
-            async for chunk in app.state.pipeline.tts.synthesize_with_clone(
+    # Clone voice and synthesize — collect all audio before returning
+    # so the temp file isn't deleted before it's read
+    async def generate_audio():
+        try:
+            async for chunk in tts_provider.synthesize_with_clone(
                 text, tmp_path, language="en"
             ):
                 yield chunk
-        
-        return StreamingResponse(
-            generate_audio(),
-            media_type="audio/wav",
-            headers={"Content-Disposition": f"attachment; filename=cloned_voice.wav"}
-        )
-    finally:
-        # Cleanup temp file
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+    
+    return StreamingResponse(
+        generate_audio(),
+        media_type="audio/wav",
+        headers={"Content-Disposition": f"attachment; filename=cloned_voice.wav"}
+    )
 
 
 @app.get("/voices")

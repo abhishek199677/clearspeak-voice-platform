@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, Globe } from 'lucide-react'
 
 const navItems = [
-  { label: 'Voice Agents', href: '#features' },
-  { label: 'About', href: '#about' },
+  { label: 'Features', href: '#features' },
+  { label: 'How It Works', href: '#about' },
+  { label: 'Languages', href: '#languages' },
+  { label: 'Try Now', href: '#voice-chat' },
   { label: 'Pricing', href: '#pricing' },
-  { label: 'Products', href: '#products' },
-  { label: 'Try', href: '#contact' },
 ]
 
 export default function Navbar() {
@@ -33,9 +33,12 @@ export default function Navbar() {
         <div className="max-w-7xl mx-auto px-5 sm:px-8 flex items-center justify-between h-16 sm:h-[72px]">
           <a href="#" className="flex items-center gap-2.5">
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br from-[#6C3CE1] to-[#9B6DFF] flex items-center justify-center">
-              <span className="text-white font-bold text-sm">C</span>
+              <Globe className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
-            <span className="text-[17px] sm:text-lg font-bold">ClearSpeak</span>
+            <div className="flex flex-col">
+              <span className="text-[17px] sm:text-lg font-bold leading-tight">ClearSpeak</span>
+              <span className="text-[9px] text-gray-500 leading-tight hidden sm:block">India's Voice Platform</span>
+            </div>
           </a>
 
           <div className="hidden lg:flex items-center gap-7">
@@ -51,15 +54,15 @@ export default function Navbar() {
           </div>
 
           <div className="hidden lg:flex items-center gap-3">
-            <a href="#contact" className="px-5 py-2.5 text-[13px] font-medium text-gray-300 hover:text-white transition-colors duration-200">
-              Login
+            <a href="#voice-chat" className="px-5 py-2.5 text-[13px] font-medium text-gray-300 hover:text-white transition-colors duration-200">
+              Try Demo
             </a>
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="px-5 py-2.5 bg-gradient-to-r from-[#6C3CE1] to-[#9B6DFF] rounded-full text-[13px] font-semibold hover:shadow-[0_12px_32px_rgba(108,60,225,0.3)] transition-all duration-300"
             >
-              Sign up
+              Get Started
             </motion.button>
           </div>
 
@@ -95,9 +98,9 @@ export default function Navbar() {
                 ))}
               </div>
               <div className="mt-6 pt-6 border-t border-white/[0.06] space-y-4">
-                <a href="#contact" className="block text-[15px] text-gray-400 hover:text-white">Login</a>
+                <a href="#voice-chat" onClick={() => setIsMobileOpen(false)} className="block text-[15px] text-gray-400 hover:text-white">Try Demo</a>
                 <button className="w-full px-6 py-3 bg-gradient-to-r from-[#6C3CE1] to-[#9B6DFF] rounded-full text-[14px] font-semibold">
-                  Sign up
+                  Get Started
                 </button>
               </div>
             </div>

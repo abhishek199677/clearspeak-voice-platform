@@ -1,12 +1,14 @@
 """
-Voice AI Platform - WebSocket Handler
+ClearSpeak AI - WebSocket Handler
 Real-time bidirectional audio streaming via WebSocket with chat support.
+Supports binary audio chunks for efficient streaming and translation mode.
 """
 
 import asyncio
 import json
+import struct
 from datetime import datetime
-from typing import Dict, Optional, Set
+from typing import Dict, Optional, Set, Any
 import structlog
 from fastapi import WebSocket, WebSocketDisconnect
 from backend.models.schemas import (
@@ -14,11 +16,16 @@ from backend.models.schemas import (
     ReadReceipt, Reaction, MessageType, UserPresence
 )
 from backend.core.session import SessionManager
-from backend.core.pipeline import VoicePipeline
+from backend.core.pipeline import VoicePipeline, PipelineMode
 from backend.core.chat import ChatManager
 from backend.monitoring.metrics import MetricsCollector
 
 logger = structlog.get_logger()
+
+# Audio format constants
+AUDIO_FORMAT_PCM = "pcm"
+AUDIO_FORMAT_OPUS = "opus"
+AUDIO_HEADER_MAGIC = b"CSA1"  # ClearSpeak Audio v1
 
 
 class ConnectionManager:
@@ -29,6 +36,7 @@ class ConnectionManager:
     - Connection pooling
     - Room/channel-based broadcasting
     - Heartbeat monitoring
+    - Binary audio streaming
     - Graceful disconnect handling
     - Message queuing for slow clients
     - User presence tracking
@@ -39,6 +47,7 @@ class ConnectionManager:
         self.user_sessions: Dict[str, str] = {}  # user_id -> session_id
         self.session_users: Dict[str, str] = {}  # session_id -> user_id
         self.user_channels: Dict[str, Set[str]] = {}  # user_id -> set of channel_ids
+        self.session_modes: Dict[str, PipelineMode] = {}  # session_id -> pipeline mode
         self._heartbeat_task: Optional[asyncio.Task] = None
         self._metrics = MetricsCollector()
     
@@ -70,12 +79,22 @@ class ConnectionManager:
             user_id = self.session_users.pop(session_id, None)
             if user_id:
                 self.user_sessions.pop(user_id, None)
-                # Remove user from all channels
                 if user_id in self.user_channels:
                     del self.user_channels[user_id]
             
+            # Clean up mode
+            self.session_modes.pop(session_id, None)
+            
             self._metrics.websocket_connections.dec()
             logger.info("WebSocket disconnected", session_id=session_id)
+    
+    def set_session_mode(self, session_id: str, mode: PipelineMode):
+        """Set pipeline mode for a session."""
+        self.session_modes[session_id] = mode
+    
+    def get_session_mode(self, session_id: str) -> PipelineMode:
+        """Get pipeline mode for a session."""
+        return self.session_modes.get(session_id, PipelineMode.AGENT)
     
     def join_channel(self, user_id: str, channel_id: str):
         """User joins a channel."""
@@ -103,18 +122,45 @@ class ConnectionManager:
             return False
         
         try:
-            # Serialize message
-            data = {
-                "type": message.type,
-                "session_id": message.session_id,
-                "text": message.text,
-                "audio_data": message.audio_data,
-                "format": message.format.value if message.format else None,
-                "sample_rate": message.sample_rate,
-                "timestamp": message.timestamp.isoformat()
-            }
+            # For audio messages, send as binary for efficiency
+            if message.type == "audio" and message.audio_data:
+                audio_bytes = bytes.fromhex(message.audio_data)
+                
+                # Create a header with metadata
+                header = {
+                    "type": "audio",
+                    "session_id": message.session_id,
+                    "sample_rate": message.sample_rate or 24000,
+                    "format": "pcm",
+                    "timestamp": message.timestamp.isoformat()
+                }
+                
+                if hasattr(message, 'metadata') and message.metadata:
+                    header["metadata"] = message.metadata
+                
+                # Send header as JSON, then binary audio
+                header_json = json.dumps(header)
+                header_bytes = header_json.encode("utf-8")
+                
+                # Format: [4 bytes header length][header bytes][audio bytes]
+                header_len = len(header_bytes).to_bytes(4, byteorder="big")
+                await websocket.send_bytes(header_len + header_bytes + audio_bytes)
+            else:
+                # Send JSON for non-audio messages
+                data = {
+                    "type": message.type,
+                    "session_id": message.session_id,
+                    "text": message.text,
+                    "format": message.format.value if message.format else None,
+                    "sample_rate": message.sample_rate,
+                    "timestamp": message.timestamp.isoformat()
+                }
+                
+                if hasattr(message, 'metadata') and message.metadata:
+                    data["metadata"] = message.metadata
+                
+                await websocket.send_json(data)
             
-            await websocket.send_json(data)
             self._metrics.websocket_messages_sent.inc()
             return True
             
@@ -202,13 +248,12 @@ class VoiceWebSocketHandler:
     """
     WebSocket handler for voice streaming and chat.
     
-    Handles the complete lifecycle:
-    - Connection establishment
-    - Audio streaming
+    Supports:
+    - Binary audio chunks (raw PCM/Opus)
+    - JSON control messages
+    - Agent mode and Translation mode
     - Chat messaging
-    - Message processing
-    - Error handling
-    - Disconnection
+    - Real-time translation
     """
     
     def __init__(
@@ -223,14 +268,23 @@ class VoiceWebSocketHandler:
         self.connection_manager = ConnectionManager()
         self._metrics = MetricsCollector()
     
-    async def handle_connection(self, websocket: WebSocket, session_id: str, user_id: Optional[str] = None):
+    async def handle_connection(
+        self,
+        websocket: WebSocket,
+        session_id: str,
+        user_id: Optional[str] = None
+    ):
         """
         Handle a WebSocket connection for voice streaming and chat.
         
-        Args:
-            websocket: WebSocket connection
-            session_id: Session identifier
-            user_id: Optional user identifier
+        Protocol:
+        - Client sends: JSON control messages OR binary audio chunks
+        - Server responds: JSON messages OR binary audio chunks
+        
+        Binary Audio Format:
+        - 4 bytes: header length (big-endian)
+        - N bytes: JSON header with metadata
+        - Remaining bytes: raw PCM audio (16-bit, 16kHz, mono)
         """
         # Connect
         if not await self.connection_manager.connect(websocket, session_id, user_id):
@@ -243,15 +297,18 @@ class VoiceWebSocketHandler:
         if user_id:
             await self.chat.update_user_presence(user_id, UserPresence.ONLINE)
         
-        # Send welcome message
-        await self.connection_manager.send_message(
-            session_id,
-            VoiceMessage(
-                type="text",
-                session_id=session_id,
-                text="Hello! I'm your AI voice assistant. How can I help you today?"
-            )
-        )
+        # Send welcome message with supported features
+        await self.connection_manager.send_json(session_id, {
+            "type": "welcome",
+            "session_id": session_id,
+            "features": {
+                "binary_audio": True,
+                "translation_mode": True,
+                "agent_mode": True,
+                "supported_formats": ["pcm", "opus"],
+                "sample_rates": [16000, 24000],
+            }
+        })
         
         # Auto-join general channel
         if user_id:
@@ -278,25 +335,19 @@ class VoiceWebSocketHandler:
         
         try:
             while True:
-                # Receive message from client
-                data = await websocket.receive_json()
-                self._metrics.websocket_messages_received.inc()
+                # Try to receive as binary first, then JSON
+                message = await websocket.receive()
                 
-                # Handle chat messages
-                if data.get("type") in ["chat_message", "typing", "read_receipt", "reaction"]:
-                    await self._handle_chat_message(session_id, user_id, data)
-                else:
-                    # Handle voice/text messages
-                    message = VoiceMessage(**data)
-                    
-                    if message.type == "audio":
-                        await self._handle_audio_message(session_id, message)
-                    elif message.type == "text":
-                        await self._handle_text_message(session_id, message)
-                    elif message.type == "control":
-                        await self._handle_control_message(session_id, message)
-                    elif message.type == "heartbeat":
-                        pass  # Acknowledged implicitly
+                if message.get("type") == "websocket.receive":
+                    # Check if it's binary or text
+                    if "bytes" in message and message["bytes"]:
+                        await self._handle_binary_audio(session_id, message["bytes"])
+                    elif "text" in message and message["text"]:
+                        try:
+                            data = json.loads(message["text"])
+                            await self._handle_json_message(session_id, user_id, data)
+                        except json.JSONDecodeError:
+                            logger.warning("Invalid JSON received", session_id=session_id)
                 
         except WebSocketDisconnect:
             logger.info("Client disconnected", session_id=session_id)
@@ -304,6 +355,161 @@ class VoiceWebSocketHandler:
             logger.error("WebSocket error", session_id=session_id, error=str(e))
         finally:
             await self._cleanup_connection(session_id, user_id)
+    
+    async def _handle_json_message(self, session_id: str, user_id: Optional[str], data: dict):
+        """Handle JSON control messages."""
+        msg_type = data.get("type", "")
+        
+        # Chat messages
+        if msg_type in ["chat_message", "typing", "read_receipt", "reaction"]:
+            await self._handle_chat_message(session_id, user_id, data)
+        
+        # Mode switching
+        elif msg_type == "set_mode":
+            mode = data.get("mode", "agent")
+            pipeline_mode = PipelineMode.TRANSLATION if mode == "translation" else PipelineMode.AGENT
+            self.connection_manager.set_session_mode(session_id, pipeline_mode)
+            
+            await self.connection_manager.send_json(session_id, {
+                "type": "mode_set",
+                "mode": mode,
+                "session_id": session_id
+            })
+            
+            logger.info("Pipeline mode set", session_id=session_id, mode=mode)
+        
+        # Set translation languages
+        elif msg_type == "set_languages":
+            source_lang = data.get("source_language", "hi")
+            target_lang = data.get("target_language", "en")
+            
+            await self.pipeline.set_translation_languages(
+                session_id, source_lang, target_lang
+            )
+            
+            await self.connection_manager.send_json(session_id, {
+                "type": "languages_set",
+                "source_language": source_lang,
+                "target_language": target_lang,
+                "session_id": session_id
+            })
+        
+        # Voice/text messages
+        elif msg_type in ["audio", "text", "control", "heartbeat"]:
+            message = VoiceMessage(**data)
+            
+            if message.type == "audio":
+                await self._handle_audio_message(session_id, message)
+            elif message.type == "text":
+                await self._handle_text_message(session_id, message)
+            elif message.type == "control":
+                await self._handle_control_message(session_id, message)
+            elif message.type == "heartbeat":
+                pass  # Acknowledged implicitly
+    
+    async def _handle_binary_audio(self, session_id: str, data: bytes):
+        """
+        Handle binary audio data.
+        
+        Format: [4 bytes header length][JSON header][PCM audio data]
+        """
+        if len(data) < 4:
+            return
+        
+        try:
+            # Parse header length
+            header_len = int.from_bytes(data[:4], byteorder="big")
+            
+            if len(data) < 4 + header_len:
+                logger.warning("Incomplete audio message", session_id=session_id)
+                return
+            
+            # Parse header
+            header_bytes = data[4:4 + header_len]
+            header = json.loads(header_bytes.decode("utf-8"))
+            
+            # Extract audio data
+            audio_data = data[4 + header_len:]
+            
+            if not audio_data:
+                return
+            
+            # Get pipeline mode
+            mode = self.connection_manager.get_session_mode(session_id)
+            
+            # Create audio generator
+            async def audio_generator():
+                yield audio_data
+            
+            # Process through pipeline
+            async for response in self.pipeline.process_audio_stream(
+                session_id,
+                audio_generator(),
+                mode=mode
+            ):
+                await self.connection_manager.send_message(session_id, response)
+                
+        except Exception as e:
+            logger.error("Failed to process binary audio", session_id=session_id, error=str(e))
+    
+    async def _handle_audio_message(self, session_id: str, message: VoiceMessage):
+        """Handle incoming audio message (legacy base64 format)."""
+        import base64
+        
+        # Decode audio data
+        audio_data = base64.b64decode(message.audio_data) if message.audio_data else b""
+        
+        if not audio_data:
+            return
+        
+        # Get pipeline mode
+        mode = self.connection_manager.get_session_mode(session_id)
+        
+        # Create audio stream from single chunk
+        async def audio_generator():
+            yield audio_data
+        
+        # Process through pipeline
+        async for response in self.pipeline.process_audio_stream(
+            session_id,
+            audio_generator(),
+            mode=mode
+        ):
+            await self.connection_manager.send_message(session_id, response)
+    
+    async def _handle_text_message(self, session_id: str, message: VoiceMessage):
+        """Handle incoming text message."""
+        if not message.text:
+            return
+        
+        # Get pipeline mode
+        mode = self.connection_manager.get_session_mode(session_id)
+        
+        # Process through pipeline
+        async for response in self.pipeline.process_text_input(
+            session_id,
+            message.text,
+            mode=mode
+        ):
+            await self.connection_manager.send_message(session_id, response)
+    
+    async def _handle_control_message(self, session_id: str, message: VoiceMessage):
+        """Handle control messages (pause, resume, etc.)."""
+        if message.text == "pause":
+            await self.sessions.update_session_state(session_id, SessionState.WAITING)
+        elif message.text == "resume":
+            await self.sessions.update_session_state(session_id, SessionState.READY)
+        elif message.text == "interrupt":
+            await self.sessions.update_session_state(session_id, SessionState.PROCESSING)
+        elif message.text == "end":
+            await self.connection_manager.send_message(
+                session_id,
+                VoiceMessage(
+                    type="control",
+                    session_id=session_id,
+                    text="session_ended"
+                )
+            )
     
     async def _handle_chat_message(self, session_id: str, user_id: Optional[str], data: dict):
         """Handle chat-related messages."""
@@ -338,15 +544,45 @@ class VoiceWebSocketHandler:
                     channel_id,
                     {
                         "type": "chat_message",
-                        "message": message.model_dump()
+                        "message": message.model_dump(mode='json')
                     }
                 )
+            
+            # If in agent mode, process through LLM pipeline
+            mode = self.connection_manager.get_session_mode(session_id)
+            if mode == PipelineMode.AGENT and content:
+                try:
+                    async for response in self.pipeline.process_text_input(
+                        session_id, content, mode=mode
+                    ):
+                        await self.connection_manager.send_message(session_id, response)
+                except Exception as e:
+                    logger.error("Agent processing failed", session_id=session_id, error=str(e))
+                    await self.connection_manager.send_json(session_id, {
+                        "type": "text",
+                        "text": f"Error: {str(e)}",
+                        "session_id": session_id
+                    })
+            
+            # If in translation mode, process translation
+            elif mode == PipelineMode.TRANSLATION and content:
+                try:
+                    async for response in self.pipeline.process_text_input(
+                        session_id, content, mode=mode
+                    ):
+                        await self.connection_manager.send_message(session_id, response)
+                except Exception as e:
+                    logger.error("Translation processing failed", session_id=session_id, error=str(e))
+                    await self.connection_manager.send_json(session_id, {
+                        "type": "text",
+                        "text": f"Translation error: {str(e)}",
+                        "session_id": session_id
+                    })
         
         elif msg_type == "typing":
             channel_id = data.get("channel_id", "general")
             indicator = await self.chat.update_typing(channel_id, user_id, user_id)
             
-            # Broadcast typing indicator
             await self.connection_manager.broadcast_to_channel(
                 channel_id,
                 {
@@ -363,7 +599,6 @@ class VoiceWebSocketHandler:
             
             await self.chat.update_read_receipt(channel_id, user_id, last_message_id)
             
-            # Broadcast read receipt
             await self.connection_manager.broadcast_to_channel(
                 channel_id,
                 {
@@ -386,7 +621,6 @@ class VoiceWebSocketHandler:
             else:
                 await self.chat.remove_reaction(channel_id, message_id, user_id, emoji)
             
-            # Broadcast reaction
             await self.connection_manager.broadcast_to_channel(
                 channel_id,
                 {
@@ -399,65 +633,11 @@ class VoiceWebSocketHandler:
                 }
             )
     
-    async def _handle_audio_message(self, session_id: str, message: VoiceMessage):
-        """Handle incoming audio message."""
-        import base64
-        
-        # Decode audio data
-        audio_data = base64.b64decode(message.audio_data) if message.audio_data else b""
-        
-        if not audio_data:
-            return
-        
-        # Create audio stream from single chunk
-        async def audio_generator():
-            yield audio_data
-        
-        # Process through pipeline
-        async for response in self.pipeline.process_audio_stream(
-            session_id,
-            audio_generator()
-        ):
-            await self.connection_manager.send_message(session_id, response)
-    
-    async def _handle_text_message(self, session_id: str, message: VoiceMessage):
-        """Handle incoming text message."""
-        if not message.text:
-            return
-        
-        # Process through pipeline
-        async for response in self.pipeline.process_text_input(
-            session_id,
-            message.text
-        ):
-            await self.connection_manager.send_message(session_id, response)
-    
-    async def _handle_control_message(self, session_id: str, message: VoiceMessage):
-        """Handle control messages (pause, resume, etc.)."""
-        if message.text == "pause":
-            await self.sessions.update_session_state(session_id, SessionState.WAITING)
-        elif message.text == "resume":
-            await self.sessions.update_session_state(session_id, SessionState.READY)
-        elif message.text == "interrupt":
-            # Handle interruption - stop current TTS and process new input
-            await self.sessions.update_session_state(session_id, SessionState.PROCESSING)
-        elif message.text == "end":
-            await self.connection_manager.send_message(
-                session_id,
-                VoiceMessage(
-                    type="control",
-                    session_id=session_id,
-                    text="session_ended"
-                )
-            )
-    
     async def _cleanup_connection(self, session_id: str, user_id: Optional[str] = None):
         """Clean up connection and session."""
-        # Update user presence
         if user_id:
             await self.chat.update_user_presence(user_id, UserPresence.OFFLINE)
             
-            # Leave all channels
             for channel_id in list(self.connection_manager.user_channels.get(user_id, set())):
                 self.connection_manager.leave_channel(user_id, channel_id)
                 await self.connection_manager.broadcast_to_channel(

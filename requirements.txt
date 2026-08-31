@@ -9,17 +9,29 @@ pydantic-settings==2.1.0
 websockets==12.0
 aiortc==1.7.0
 
-# ASR Providers
+# ASR Providers (Standard)
 deepgram-sdk==3.2.7
 openai-whisper==20231117
 
-# TTS Providers
+# ASR Providers (Indic)
+# Bhashini, AI4Bharat use httpx (included below)
+
+# TTS Providers (Standard)
 elevenlabs==1.2.1
 azure-cognitiveservices-speech==1.34.0
+edge-tts==6.1.9
+
+# TTS Providers (Indic)
+# Azure Indic voices use azure-cognitiveservices-speech (included above)
+# Bhashini TTS uses httpx (included below)
 
 # LLM
 openai==1.10.0
 langchain==0.1.4
+
+# Translation & Language Detection
+langdetect==1.0.9
+httpx==0.26.0
 
 # Audio Processing
 numpy==1.26.3
@@ -35,7 +47,6 @@ python-json-logger==2.0.7
 
 # Infrastructure
 redis==5.0.1
-httpx==0.26.0
 aiohttp==3.9.3
 
 # Development

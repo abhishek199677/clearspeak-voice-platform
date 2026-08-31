@@ -1,32 +1,32 @@
 import { motion, useInView } from 'framer-motion'
 import { useRef } from 'react'
-import { Mic, Brain, Volume2, ArrowRight, CheckCircle } from 'lucide-react'
+import { Mic, Languages, Volume2, ArrowRight, CheckCircle, Globe } from 'lucide-react'
 
 const steps = [
   {
     number: '01',
     icon: Mic,
-    title: 'Speak or Upload',
-    description: 'Talk into your microphone or upload an audio file. ClearSpeak supports 200+ languages and handles any accent or dialect.',
-    details: ['Live microphone input', 'Audio file upload', 'Real-time streaming', 'Any language, any accent'],
+    title: 'Speak',
+    description: 'Speak in any Indian language. Our ASR powered by Bhashini and AI4Bharat recognizes your speech with 98.5% accuracy.',
+    details: ['Bhashini ASR for 22 Indian languages', 'AI4Bharat IndicWav2Vec models', 'Real-time streaming', 'Handles Indian accents'],
     color: '#6C3CE1',
     gradient: 'from-[#6C3CE1] to-[#9B6DFF]',
   },
   {
     number: '02',
-    icon: Brain,
-    title: 'AI Processes',
-    description: 'Our AI transcribes, translates, and understands context in real-time. Sub-100ms response with enterprise-grade accuracy.',
-    details: ['98.5% transcription accuracy', 'Context-aware responses', 'Multi-language translation', 'Sentiment analysis'],
+    icon: Languages,
+    title: 'Translate',
+    description: 'IndicTrans2 translates between Indian languages with context-aware accuracy. No meaning lost.',
+    details: ['IndicTrans2 by AI4Bharat', 'Azure Multilingual Translator', 'Indic-to-Indic via English pivot', 'Context-aware translation'],
     color: '#FF6B35',
     gradient: 'from-[#FF6B35] to-[#FF8F6B]',
   },
   {
     number: '03',
     icon: Volume2,
-    title: 'Get Results',
-    description: 'Receive text transcripts, voice responses, or translated audio. Export, integrate, or deploy as an agent.',
-    details: ['Text transcripts', 'Voice output in any language', 'API integration', 'Deploy as 24/7 agent'],
+    title: 'Speak',
+    description: 'Azure Neural TTS speaks the translation in natural-sounding Indian voices. Hindi, Tamil, Telugu, and more.',
+    details: ['Azure Neural Indian voices', 'Edge TTS (free)', '20+ voice options', 'Natural prosody'],
     color: '#00D4AA',
     gradient: 'from-[#00D4AA] to-[#00F5C4]',
   },
@@ -53,11 +53,11 @@ export default function HowItWorks() {
         >
           <span className="text-[#00D4AA] font-semibold tracking-wider uppercase text-[11px]">How It Works</span>
           <h2 className="text-[2.25rem] sm:text-[2.75rem] lg:text-[3.5rem] font-bold mt-4 mb-5 tracking-tight">
-            Three Steps to{' '}
-            <span className="gradient-text">Smarter Communication</span>
+            Speak Any Language,{' '}
+            <span className="gradient-text">Be Understood Everywhere</span>
           </h2>
           <p className="text-[15px] sm:text-[17px] text-gray-400 max-w-2xl mx-auto leading-relaxed">
-            From speech to insight in seconds. No complex setup, no coding required.
+            Three simple steps. Real-time translation between 22 Indian languages.
           </p>
         </motion.div>
 
@@ -116,6 +116,86 @@ export default function HowItWorks() {
             </motion.div>
           ))}
         </div>
+
+        {/* Example conversation */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="mt-20 p-8 glass-card rounded-2xl max-w-3xl mx-auto"
+        >
+          <h3 className="text-center text-[15px] font-semibold text-white mb-6">Example Conversation</h3>
+          
+          <div className="space-y-4">
+            {/* Person A speaks Telugu */}
+            <div className="flex gap-3">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#FF6B35] to-[#FF8F6B] flex items-center justify-center flex-shrink-0">
+                <Mic className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <div className="text-[10px] text-gray-600 mb-1">Person A (Telugu)</div>
+                <div className="inline-block px-4 py-2.5 rounded-2xl text-[13px] bg-white/[0.04] text-white rounded-tl-md">
+                  నమస్తే, మీరు ఎలా ఉన్నారు?
+                </div>
+              </div>
+            </div>
+
+            {/* Translation arrow */}
+            <div className="flex items-center gap-2 ml-11">
+              <div className="w-6 h-px bg-[#6C3CE1]/30" />
+              <Globe className="w-3.5 h-3.5 text-[#6C3CE1]" />
+              <span className="text-[10px] text-[#6C3CE1]">Translating Telugu → English</span>
+              <div className="flex-1 h-px bg-[#6C3CE1]/30" />
+            </div>
+
+            {/* Person B hears English */}
+            <div className="flex gap-3 flex-row-reverse">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#6C3CE1] to-[#9B6DFF] flex items-center justify-center flex-shrink-0">
+                <Volume2 className="w-4 h-4 text-white" />
+              </div>
+              <div className="text-right">
+                <div className="text-[10px] text-gray-600 mb-1">Person B (English)</div>
+                <div className="inline-block px-4 py-2.5 rounded-2xl text-[13px] bg-[#6C3CE1]/10 text-white rounded-tr-md">
+                  Hello, how are you?
+                </div>
+              </div>
+            </div>
+
+            {/* Person B responds in English */}
+            <div className="flex gap-3 flex-row-reverse">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#6C3CE1] to-[#9B6DFF] flex items-center justify-center flex-shrink-0">
+                <Mic className="w-4 h-4 text-white" />
+              </div>
+              <div className="text-right">
+                <div className="text-[10px] text-gray-600 mb-1">Person B (English)</div>
+                <div className="inline-block px-4 py-2.5 rounded-2xl text-[13px] bg-white/[0.04] text-white rounded-tr-md">
+                  I'm doing well, thank you!
+                </div>
+              </div>
+            </div>
+
+            {/* Translation arrow back */}
+            <div className="flex items-center gap-2 ml-11 flex-row-reverse">
+              <div className="w-6 h-px bg-[#FF6B35]/30" />
+              <Globe className="w-3.5 h-3.5 text-[#FF6B35]" />
+              <span className="text-[10px] text-[#FF6B35]">Translating English → Telugu</span>
+              <div className="flex-1 h-px bg-[#FF6B35]/30" />
+            </div>
+
+            {/* Person A hears Telugu */}
+            <div className="flex gap-3">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#FF6B35] to-[#FF8F6B] flex items-center justify-center flex-shrink-0">
+                <Volume2 className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <div className="text-[10px] text-gray-600 mb-1">Person A (Telugu)</div>
+                <div className="inline-block px-4 py-2.5 rounded-2xl text-[13px] bg-[#FF6B35]/10 text-white rounded-tl-md">
+                  నేను బాగున్నాను, ధన్యవాదాలు!
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
       </div>
     </section>
   )

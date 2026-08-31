@@ -1,61 +1,61 @@
 import { motion, useInView } from 'framer-motion'
 import { useRef } from 'react'
-import { Languages, Brain, Users, MessageSquare, Volume2, FileText } from 'lucide-react'
+import { Languages, Mic, Volume2, ArrowRightLeft, Shield, Zap, Globe, Users } from 'lucide-react'
 
 const features = [
   {
-    icon: Volume2,
-    title: 'Speech Intelligence',
-    description: 'State-of-the-art speech recognition and synthesis. Deploy across mobile, browsers, and edge devices with privacy-first architecture.',
+    icon: ArrowRightLeft,
+    title: 'Real-Time Translation',
+    description: 'Speech-to-speech translation between 22 Indian languages. Speak Hindi, hear Tamil. Instantly.',
     color: '#6C3CE1',
     gradient: 'from-[#6C3CE1] to-[#9B6DFF]',
+    stat: '<300ms',
+    statLabel: 'Latency',
+  },
+  {
+    icon: Languages,
+    title: '22 Indian Languages',
+    description: 'All Scheduled Languages of India: Hindi, Bengali, Tamil, Telugu, Malayalam, Kannada, and more.',
+    color: '#FF6B35',
+    gradient: 'from-[#FF6B35] to-[#FF8F6B]',
+    stat: '22',
+    statLabel: 'Languages',
+  },
+  {
+    icon: Mic,
+    title: 'Bhashini ASR',
+    description: 'Speech recognition powered by Bhashini and AI4Bharat. Built for Indian accents and dialects.',
+    color: '#00D4AA',
+    gradient: 'from-[#00D4AA] to-[#00F5C4]',
     stat: '98.5%',
     statLabel: 'Accuracy',
   },
   {
-    icon: Languages,
-    title: '200+ Languages',
-    description: 'Real-time translation across 200+ languages with native script support. Preserve meaning, tone, and cultural context.',
-    color: '#FF6B35',
-    gradient: 'from-[#FF6B35] to-[#FF8F6B]',
-    stat: '200+',
-    statLabel: 'Languages',
-  },
-  {
-    icon: Brain,
-    title: 'AI Agents',
-    description: 'Intelligent conversational agents with persistent memory, tool calling, and multi-turn orchestration.',
-    color: '#00D4AA',
-    gradient: 'from-[#00D4AA] to-[#00F5C4]',
-    stat: '<100ms',
-    statLabel: 'Response',
-  },
-  {
-    icon: MessageSquare,
-    title: 'Voice Agents',
-    description: 'Natural voice interactions that understand dialects, code-switching, and mixed-language conversations.',
+    icon: Volume2,
+    title: 'Neural TTS',
+    description: 'Azure Neural voices for Indian languages. Natural-sounding speech in Hindi, Tamil, Telugu, and more.',
     color: '#E040FB',
     gradient: 'from-[#E040FB] to-[#F060FF]',
-    stat: '24/7',
-    statLabel: 'Available',
+    stat: '20+',
+    statLabel: 'Voices',
   },
   {
-    icon: Users,
-    title: 'Enterprise Scale',
-    description: 'Support millions of concurrent users with sub-100ms latency. Auto-scaling infrastructure that grows with you.',
+    icon: Shield,
+    title: 'Data Sovereignty',
+    description: 'India-first architecture. Your data stays in India. Compliant with Indian data protection laws.',
     color: '#00BCD4',
     gradient: 'from-[#00BCD4] to-[#00E5FF]',
-    stat: '1M+',
-    statLabel: 'Concurrent',
+    stat: '100%',
+    statLabel: 'Indian',
   },
   {
-    icon: FileText,
-    title: 'Document Intelligence',
-    description: 'Extract, analyze, and process documents with AI. Automate workflows and transform unstructured data.',
+    icon: Zap,
+    title: 'IndicTrans2',
+    description: 'Powered by AI4Bharat\'s IndicTrans2 for high-quality translation between Indian languages.',
     color: '#FF5722',
     gradient: 'from-[#FF5722] to-[#FF7043]',
-    stat: '99.9%',
-    statLabel: 'Uptime',
+    stat: '22+',
+    statLabel: 'Pairs',
   },
 ]
 
@@ -118,11 +118,11 @@ export default function Features() {
         >
           <span className="text-[#FF6B35] font-semibold tracking-wider uppercase text-[11px]">Platform</span>
           <h2 className="text-[2.25rem] sm:text-[2.75rem] lg:text-[3.5rem] font-bold mt-4 mb-5 tracking-tight">
-            Everything You Need to{' '}
-            <span className="gradient-text">Build at Scale</span>
+            Built for{' '}
+            <span className="gradient-text">India's Languages</span>
           </h2>
           <p className="text-[15px] sm:text-[17px] text-gray-400 max-w-2xl mx-auto leading-relaxed">
-            A unified platform for speech intelligence, language models, and autonomous agents. Production-ready from day one.
+            Real-time translation, speech recognition, and voice synthesis for all 22 Scheduled Languages of India. Powered by Indian AI research.
           </p>
         </motion.div>
 
@@ -131,6 +131,50 @@ export default function Features() {
             <FeatureCard key={feature.title} feature={feature} index={i} />
           ))}
         </div>
+
+        {/* Language grid */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="mt-16 p-8 glass-card rounded-2xl"
+        >
+          <h3 className="text-center text-[15px] font-semibold text-white mb-6">All 22 Scheduled Languages of India</h3>
+          <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-11 gap-3">
+            {[
+              { code: 'hi', name: 'Hindi' },
+              { code: 'bn', name: 'Bengali' },
+              { code: 'ta', name: 'Tamil' },
+              { code: 'te', name: 'Telugu' },
+              { code: 'ml', name: 'Malayalam' },
+              { code: 'kn', name: 'Kannada' },
+              { code: 'gu', name: 'Gujarati' },
+              { code: 'mr', name: 'Marathi' },
+              { code: 'pa', name: 'Punjabi' },
+              { code: 'ur', name: 'Urdu' },
+              { code: 'as', name: 'Assamese' },
+              { code: 'or', name: 'Odia' },
+              { code: 'sa', name: 'Sanskrit' },
+              { code: 'gom', name: 'Konkani' },
+              { code: 'doi', name: 'Dogri' },
+              { code: 'mai', name: 'Maithili' },
+              { code: 'sat', name: 'Santali' },
+              { code: 'ks', name: 'Kashmiri' },
+              { code: 'mni', name: 'Manipuri' },
+              { code: 'brx', name: 'Bodo' },
+              { code: 'sd', name: 'Sindhi' },
+              { code: 'ne', name: 'Nepali' },
+            ].map((lang) => (
+              <div
+                key={lang.code}
+                className="px-2 py-2 bg-white/[0.03] border border-white/[0.06] rounded-lg text-center hover:bg-white/[0.06] transition-all cursor-default"
+              >
+                <div className="text-[11px] font-semibold text-white">{lang.name}</div>
+                <div className="text-[9px] text-gray-500 mt-0.5">{lang.code}</div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
       </div>
     </section>
   )

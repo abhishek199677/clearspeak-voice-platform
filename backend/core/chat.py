@@ -331,7 +331,7 @@ class ChatManager:
         
         try:
             key = f"channel:{message.channel_id}:messages"
-            data = json.dumps(message.model_dump(), default=str)
+            data = json.dumps(message.model_dump(mode='json'), default=str)
             await self.redis.rpush(key, data)
             # Keep only last 1000 messages per channel
             await self.redis.ltrim(key, -1000, -1)

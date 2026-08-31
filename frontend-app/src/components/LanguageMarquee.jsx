@@ -1,10 +1,15 @@
 import { motion } from 'framer-motion'
 
 const languages = [
-  'Tamil', 'Kannada', 'Malayalam', 'Punjabi', 'Bengali',
-  'Hindi', 'Telugu', 'Gujarati', 'Marathi', 'English',
-  'Spanish', 'French', 'German', 'Chinese', 'Japanese',
-  'Korean', 'Arabic', 'Portuguese', 'Russian', 'Italian',
+  // 22 Scheduled Languages of India
+  'Hindi', 'Bengali', 'Tamil', 'Telugu', 'Malayalam',
+  'Kannada', 'Gujarati', 'Marathi', 'Punjabi', 'Urdu',
+  'Assamese', 'Odia', 'Sanskrit', 'Konkani', 'Dogri',
+  'Maithili', 'Santali', 'Kashmiri', 'Manipuri', 'Bodo',
+  'Sindhi', 'Nepali',
+  // Global languages
+  'English', 'Spanish', 'French', 'German', 'Chinese',
+  'Japanese', 'Korean', 'Arabic', 'Portuguese', 'Russian',
 ]
 
 export default function LanguageMarquee() {
@@ -43,7 +48,7 @@ export default function LanguageMarquee() {
 
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div className="px-8 py-4 bg-[#08080D]/90 backdrop-blur-xl rounded-2xl border border-white/[0.08]">
-          <span className="text-2xl font-bold gradient-text">200+ Languages</span>
+          <span className="text-2xl font-bold gradient-text">22 Indian Languages</span>
         </div>
       </div>
     </section>

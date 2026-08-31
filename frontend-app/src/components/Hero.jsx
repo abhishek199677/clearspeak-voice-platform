@@ -1,25 +1,36 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Bot, User, ArrowRight, Play, Sparkles } from 'lucide-react'
+import { Mic, ArrowRight, Play, Languages, Globe, Sparkles } from 'lucide-react'
 
-const chatMessages = [
-  { id: 1, type: 'user', text: "Hi, I'd like to schedule a demo for our team." },
-  { id: 2, type: 'bot', text: "Great! I've booked a demo slot for Thursday at 2 PM. You'll receive a calendar invite shortly." },
-  { id: 3, type: 'user', text: "Can you also send me the pricing details?" },
-  { id: 4, type: 'bot', text: "Done! I've sent the enterprise pricing sheet to your email. Let me know if you have any questions." },
+const translationDemo = [
+  { id: 1, lang: 'hi', speaker: 'Person A', text: 'नमस्ते, आप कैसे हैं?', translation: 'Hello, how are you?', langCode: 'Hindi' },
+  { id: 2, lang: 'en', speaker: 'Person B', text: 'I am fine, thank you!', translation: null, langCode: 'English' },
+  { id: 3, lang: 'ta', speaker: 'Person A', text: 'நான் நன்றாக இருக்கிறேன்', translation: 'I am doing well', langCode: 'Tamil' },
+  { id: 4, lang: 'te', speaker: 'Person B', text: 'మీరు ఎలా ఉన్నారు?', translation: 'How are you?', langCode: 'Telugu' },
 ]
 
-const trustedBy = [
-  'Synerion', 'StrongArm', 'WorkBright', 'TSheets', 'Gusto', 'Homebase',
+const stats = [
+  { value: '22', label: 'Indian Languages' },
+  { value: '200+', label: 'Global Languages' },
+  { value: '<300ms', label: 'Translation Latency' },
+  { value: '1.4B+', label: 'People Served' },
 ]
 
 export default function Hero() {
   const [visibleMessages, setVisibleMessages] = useState(0)
+  const [activeDemo, setActiveDemo] = useState(0)
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setVisibleMessages((prev) => (prev < chatMessages.length ? prev + 1 : prev))
-    }, 1200)
+      setVisibleMessages((prev) => (prev < translationDemo.length ? prev + 1 : prev))
+    }, 1800)
+    return () => clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveDemo((prev) => (prev + 1) % 3)
+    }, 4000)
     return () => clearInterval(timer)
   }, [])
 
@@ -58,7 +69,7 @@ export default function Hero() {
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-strong mb-8"
           >
             <Sparkles className="w-3.5 h-3.5 text-[#FF6B35]" />
-            <span className="text-[12px] text-gray-400 font-medium">Now with real-time voice agents</span>
+            <span className="text-[12px] text-gray-400 font-medium">India's Sovereign Communication Platform</span>
           </motion.div>
 
           <motion.h1
@@ -67,11 +78,11 @@ export default function Hero() {
             transition={{ delay: 0.3, duration: 0.7 }}
             className="text-[2.5rem] sm:text-[3.25rem] lg:text-[4.5rem] font-bold leading-[1.05] tracking-tight mb-6"
           >
-            <span className="text-white">NextGen</span>
+            <span className="text-white">One App.</span>
             <br />
-            <span className="text-white">Communications</span>
+            <span className="gradient-text">Every Language.</span>
             <br />
-            <span className="gradient-text">with Voice AI</span>
+            <span className="text-white">Limitless Possibilities.</span>
           </motion.h1>
 
           <motion.p
@@ -80,7 +91,8 @@ export default function Hero() {
             transition={{ delay: 0.5 }}
             className="text-[15px] sm:text-[17px] text-gray-400 mb-8 sm:mb-10 max-w-lg leading-relaxed"
           >
-            One platform for all your voice AI needs. Build, deploy, and scale AI communication across 200+ languages — with enterprise-grade infrastructure.
+            Real-time voice translation across 22 Indian languages. Speak your language, be understood everywhere. 
+            <span className="text-[#FF6B35] font-medium"> For India. By India. With India.</span>
           </motion.p>
 
           <motion.div
@@ -89,48 +101,48 @@ export default function Hero() {
             transition={{ delay: 0.6 }}
             className="flex flex-wrap items-center gap-3 sm:gap-5 mb-12"
           >
-            <motion.button
+            <motion.a
+              href="#voice-chat"
               whileHover={{ scale: 1.03, boxShadow: '0 20px 50px rgba(108,60,225,0.35)' }}
               whileTap={{ scale: 0.97 }}
               className="px-7 py-3.5 sm:px-8 sm:py-4 bg-gradient-to-r from-[#6C3CE1] to-[#9B6DFF] rounded-full font-semibold text-sm sm:text-[15px] flex items-center gap-2 transition-all duration-300"
             >
-              Get started
+              Try Translation Mode
               <ArrowRight className="w-4 h-4" />
-            </motion.button>
+            </motion.a>
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               className="px-7 py-3.5 sm:px-8 sm:py-4 glass-strong rounded-full font-semibold text-sm sm:text-[15px] hover:bg-white/[0.08] transition-all duration-300 flex items-center gap-2"
             >
               <Play className="w-4 h-4 fill-white" />
-              Book a call
+              Watch Demo
             </motion.button>
           </motion.div>
 
-          {/* Trust logos */}
+          {/* Stats */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1 }}
+            className="grid grid-cols-2 sm:grid-cols-4 gap-4"
           >
-            <p className="text-[11px] text-gray-600 uppercase tracking-widest font-medium mb-4">Trusted By</p>
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-              {trustedBy.map((name, i) => (
-                <motion.span
-                  key={name}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 1.1 + i * 0.06 }}
-                  className="text-[13px] sm:text-[14px] font-semibold text-gray-600 hover:text-gray-400 transition-colors cursor-default"
-                >
-                  {name}
-                </motion.span>
-              ))}
-            </div>
+            {stats.map((stat, i) => (
+              <motion.div
+                key={stat.label}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.1 + i * 0.1 }}
+                className="text-center sm:text-left"
+              >
+                <div className="text-[20px] sm:text-[24px] font-bold text-white">{stat.value}</div>
+                <div className="text-[11px] text-gray-500">{stat.label}</div>
+              </motion.div>
+            ))}
           </motion.div>
         </motion.div>
 
-        {/* Right - Chat Bubble */}
+        {/* Right - Translation Demo */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
@@ -140,77 +152,81 @@ export default function Hero() {
           {/* Glow behind card */}
           <div className="absolute inset-0 bg-gradient-to-br from-[#6C3CE1]/20 to-[#FF6B35]/10 rounded-[32px] blur-[60px] gradient-blob" />
 
-          <div className="relative glass-card rounded-[24px] lg:rounded-[32px] p-6 sm:p-8 max-w-[420px] mx-auto">
-            {/* Chat header */}
-            <div className="flex items-center gap-3 mb-6 pb-5 border-b border-white/[0.06]">
-              <div className="relative">
+          <div className="relative glass-card rounded-[24px] lg:rounded-[32px] p-6 sm:p-8 max-w-[440px] mx-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6 pb-5 border-b border-white/[0.06]">
+              <div className="flex items-center gap-3">
                 <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-[#6C3CE1] to-[#9B6DFF] flex items-center justify-center">
-                  <Bot className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-white" />
+                  <Languages className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-white" />
                 </div>
-                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-[#00D4AA] rounded-full border-2 border-[#08080D]" />
+                <div>
+                  <h4 className="font-semibold text-[14px] sm:text-[15px] text-white">Real-Time Translation</h4>
+                  <p className="text-[11px] sm:text-[12px] text-gray-500">Speak any language, understood everywhere</p>
+                </div>
               </div>
-              <div>
-                <h4 className="font-semibold text-[14px] sm:text-[15px] text-white">ClearSpeak AI</h4>
-                <p className="text-[11px] sm:text-[12px] text-gray-500">Online • Ready to help</p>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                <span className="text-[10px] text-gray-500">Live</span>
               </div>
             </div>
 
-            {/* Chat messages */}
+            {/* Translation messages */}
             <div className="space-y-4">
-              {chatMessages.map((msg, i) => (
+              {translationDemo.map((msg, i) => (
                 <motion.div
                   key={msg.id}
                   initial={{ opacity: 0, y: 12, scale: 0.97 }}
                   animate={i < visibleMessages ? { opacity: 1, y: 0, scale: 1 } : {}}
                   transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                  className={`flex gap-3 ${msg.type === 'user' ? 'flex-row-reverse' : ''}`}
+                  className="flex gap-3"
                 >
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                    msg.type === 'user'
+                    msg.lang === 'hi' || msg.lang === 'ta' || msg.lang === 'te'
                       ? 'bg-gradient-to-br from-[#FF6B35] to-[#FF8F6B]'
                       : 'bg-gradient-to-br from-[#6C3CE1] to-[#9B6DFF]'
                   }`}>
-                    {msg.type === 'user' ? <User className="w-4 h-4 text-white" /> : <Bot className="w-4 h-4 text-white" />}
+                    <Globe className="w-4 h-4 text-white" />
                   </div>
-                  <div className={`max-w-[78%] ${msg.type === 'user' ? 'text-right' : ''}`}>
-                    <div className={`inline-block px-4 py-3 rounded-2xl text-[13px] leading-relaxed ${
-                      msg.type === 'user'
-                        ? 'bg-[#FF6B35]/10 text-white rounded-tr-md'
-                        : 'bg-white/[0.04] text-white rounded-tl-md'
-                    }`}>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] font-semibold text-[#6C3CE1] uppercase">{msg.langCode}</span>
+                      <span className="text-[10px] text-gray-600">{msg.speaker}</span>
+                    </div>
+                    <div className="inline-block px-4 py-2.5 rounded-2xl text-[13px] leading-relaxed bg-white/[0.04] text-white rounded-tl-md">
                       {msg.text}
                     </div>
+                    {msg.translation && (
+                      <div className="mt-1.5 inline-block px-4 py-2 rounded-2xl text-[12px] leading-relaxed bg-[#6C3CE1]/10 text-[#9B6DFF] rounded-tl-md">
+                        → {msg.translation}
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               ))}
 
-              {visibleMessages >= chatMessages.length && (
+              {visibleMessages >= translationDemo.length && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="flex gap-3"
+                  className="text-center text-[11px] text-gray-600 pt-2"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#6C3CE1] to-[#9B6DFF] flex items-center justify-center">
-                    <Bot className="w-4 h-4 text-white" />
-                  </div>
-                  <div className="px-4 py-3 rounded-2xl bg-white/[0.04] rounded-tl-md">
-                    <div className="flex gap-1.5">
-                      <div className="w-1.5 h-1.5 bg-[#6C3CE1] rounded-full typing-dot" />
-                      <div className="w-1.5 h-1.5 bg-[#6C3CE1] rounded-full typing-dot" />
-                      <div className="w-1.5 h-1.5 bg-[#6C3CE1] rounded-full typing-dot" />
-                    </div>
-                  </div>
+                  <Mic className="w-3.5 h-3.5 inline mr-1" />
+                  Listening for next speech...
                 </motion.div>
               )}
             </div>
 
-            {/* Input bar */}
-            <div className="mt-5 pt-4 border-t border-white/[0.06]">
-              <div className="flex items-center gap-3 px-4 py-3 bg-white/[0.03] rounded-xl border border-white/[0.06]">
-                <span className="text-[13px] text-gray-500 flex-1">Type a message...</span>
-                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#6C3CE1] to-[#9B6DFF] flex items-center justify-center">
-                  <ArrowRight className="w-3.5 h-3.5 text-white" />
+            {/* Mode indicator */}
+            <div className="mt-6 pt-4 border-t border-white/[0.06]">
+              <div className="flex items-center justify-between">
+                <div className="flex gap-2">
+                  {['Hindi', 'Tamil', 'Telugu', 'Bengali'].map((lang) => (
+                    <span key={lang} className="px-2 py-1 bg-white/[0.03] border border-white/[0.06] rounded text-[10px] text-gray-500">
+                      {lang}
+                    </span>
+                  ))}
                 </div>
+                <span className="text-[10px] text-gray-600">+18 more</span>
               </div>
             </div>
           </div>

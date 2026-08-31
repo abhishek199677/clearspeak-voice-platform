@@ -1,12 +1,13 @@
 import { useState, useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
-import { Mic, Upload, Play, Download, Sparkles, AudioWaveform, CheckCircle } from 'lucide-react'
+import { Mic, Upload, Play, Pause, Download, Sparkles, AudioWaveform, CheckCircle } from 'lucide-react'
+import { cloneVoice } from '../api/platform'
 
 const sampleVoices = [
-  { name: 'Professional Male', accent: 'American English', duration: '5s' },
-  { name: 'Warm Female', accent: 'British English', duration: '8s' },
-  { name: 'Energetic Youth', accent: 'Indian English', duration: '6s' },
-  { name: 'Calm Narrator', accent: 'Australian English', duration: '10s' },
+  { name: 'Professional Male', accent: 'American English', duration: '5s', file: '/samples/professional_male.wav' },
+  { name: 'Warm Female', accent: 'British English', duration: '8s', file: '/samples/warm_female.wav' },
+  { name: 'Energetic Youth', accent: 'Indian English', duration: '6s', file: '/samples/energetic_youth.wav' },
+  { name: 'Calm Narrator', accent: 'Australian English', duration: '10s', file: '/samples/calm_narrator.wav' },
 ]
 
 const features = [
@@ -25,6 +26,12 @@ export default function VoiceClone() {
   const [isCloning, setIsCloning] = useState(false)
   const [clonedText, setClonedText] = useState('')
   const [selectedVoice, setSelectedVoice] = useState(0)
+  const [uploadedFile, setUploadedFile] = useState(null)
+  const [clonedAudioUrl, setClonedAudioUrl] = useState(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [error, setError] = useState(null)
+  const audioRef = useRef(null)
+  const fileInputRef = useRef(null)
 
   const steps = [
     { label: 'Upload Sample', icon: Upload },
@@ -32,16 +39,93 @@ export default function VoiceClone() {
     { label: 'Generate', icon: AudioWaveform },
   ]
 
-  function handleClone() {
+  function handleFileUpload(e) {
+    const file = e.target.files[0]
+    if (file) {
+      setUploadedFile(file)
+      setActiveStep(1)
+    }
+  }
+
+  function handleDrop(e) {
+    e.preventDefault()
+    const file = e.dataTransfer.files[0]
+    if (file && file.type.startsWith('audio/')) {
+      setUploadedFile(file)
+      setActiveStep(1)
+    }
+  }
+
+  function handleSelectSampleVoice(index) {
+    setSelectedVoice(index)
+    if (!uploadedFile) {
+      setActiveStep(1)
+    }
+  }
+
+  async function handleClone() {
     if (!clonedText.trim()) return
     setIsCloning(true)
     setActiveStep(1)
-    setTimeout(() => {
+    setError(null)
+    setClonedAudioUrl(null)
+    
+    try {
+      let audioFileToClone = uploadedFile
+      
+      // If no file uploaded, fetch the sample voice audio file
+      if (!audioFileToClone) {
+        const sampleFile = sampleVoices[selectedVoice].file
+        const response = await fetch(sampleFile)
+        if (!response.ok) {
+          throw new Error('Failed to load sample voice audio')
+        }
+        const blob = await response.blob()
+        audioFileToClone = new File([blob], `${sampleVoices[selectedVoice].name}.wav`, { type: 'audio/wav' })
+      }
+      
+      const audioBlob = await cloneVoice(audioFileToClone, clonedText)
+      const url = URL.createObjectURL(audioBlob)
+      setClonedAudioUrl(url)
       setActiveStep(2)
-      setTimeout(() => {
-        setIsCloning(false)
-      }, 1500)
-    }, 2000)
+    } catch (err) {
+      console.error('Clone failed:', err)
+      setError(err.message || 'Voice cloning failed. Please try again.')
+      setActiveStep(0)
+    } finally {
+      setIsCloning(false)
+    }
+  }
+
+  function handlePlay() {
+    if (clonedAudioUrl) {
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current = null
+        setIsPlaying(false)
+        return
+      }
+      
+      audioRef.current = new Audio(clonedAudioUrl)
+      audioRef.current.play()
+      setIsPlaying(true)
+      
+      audioRef.current.onended = () => {
+        setIsPlaying(false)
+        audioRef.current = null
+      }
+    }
+  }
+
+  function handleDownload() {
+    if (clonedAudioUrl) {
+      const a = document.createElement('a')
+      a.href = clonedAudioUrl
+      a.download = `cloned-voice-${Date.now()}.wav`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+    }
   }
 
   return (
@@ -107,10 +191,36 @@ export default function VoiceClone() {
                 <label className="text-[12px] text-gray-500 uppercase tracking-wider font-medium mb-3 block">
                   Voice Sample
                 </label>
-                <div className="border-2 border-dashed border-white/[0.08] rounded-xl p-6 text-center hover:border-[#E040FB]/30 transition-colors cursor-pointer">
-                  <Upload className="w-8 h-8 text-gray-600 mx-auto mb-3" />
-                  <p className="text-[13px] text-gray-400 mb-1">Drop audio file here or click to upload</p>
-                  <p className="text-[11px] text-gray-600">MP3, WAV, M4A — 3 to 30 seconds</p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="audio/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <div 
+                  onClick={() => fileInputRef.current?.click()}
+                  onDrop={handleDrop}
+                  onDragOver={(e) => e.preventDefault()}
+                  className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
+                    uploadedFile 
+                      ? 'border-[#00D4AA]/50 bg-[#00D4AA]/5' 
+                      : 'border-white/[0.08] hover:border-[#E040FB]/30'
+                  }`}
+                >
+                  {uploadedFile ? (
+                    <>
+                      <CheckCircle className="w-8 h-8 text-[#00D4AA] mx-auto mb-3" />
+                      <p className="text-[13px] text-[#00D4AA] font-medium mb-1">{uploadedFile.name}</p>
+                      <p className="text-[11px] text-gray-500">Click to change file</p>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-8 h-8 text-gray-600 mx-auto mb-3" />
+                      <p className="text-[13px] text-gray-400 mb-1">Drop audio file here or click to upload</p>
+                      <p className="text-[11px] text-gray-600">MP3, WAV, M4A — 3 to 30 seconds</p>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -123,7 +233,7 @@ export default function VoiceClone() {
                   {sampleVoices.map((voice, i) => (
                     <button
                       key={voice.name}
-                      onClick={() => setSelectedVoice(i)}
+                      onClick={() => handleSelectSampleVoice(i)}
                       className={`p-3 rounded-xl text-left transition-all duration-300 ${
                         selectedVoice === i
                           ? 'bg-[#E040FB]/10 border border-[#E040FB]/30'
@@ -178,13 +288,26 @@ export default function VoiceClone() {
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4" />
-                    Clone Voice
+                    {uploadedFile ? 'Clone Uploaded Voice' : `Clone ${sampleVoices[selectedVoice].name}`}
                   </>
                 )}
               </motion.button>
 
+              {/* Error message */}
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-[13px] text-red-400">{error}</span>
+                  </div>
+                </motion.div>
+              )}
+
               {/* Result */}
-              {activeStep === 2 && !isCloning && (
+              {activeStep === 2 && !isCloning && clonedAudioUrl && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -195,11 +318,26 @@ export default function VoiceClone() {
                     <span className="text-[13px] text-[#00D4AA] font-medium">Voice cloned successfully</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <button className="flex items-center gap-2 px-4 py-2 bg-white/[0.04] rounded-lg text-[12px] text-white hover:bg-white/[0.06] transition-colors">
-                      <Play className="w-3.5 h-3.5 fill-white" />
-                      Play
+                    <button 
+                      onClick={handlePlay}
+                      className="flex items-center gap-2 px-4 py-2 bg-white/[0.04] rounded-lg text-[12px] text-white hover:bg-white/[0.06] transition-colors"
+                    >
+                      {isPlaying ? (
+                        <>
+                          <Pause className="w-3.5 h-3.5 fill-white" />
+                          Pause
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-3.5 h-3.5 fill-white" />
+                          Play
+                        </>
+                      )}
                     </button>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-white/[0.04] rounded-lg text-[12px] text-white hover:bg-white/[0.06] transition-colors">
+                    <button 
+                      onClick={handleDownload}
+                      className="flex items-center gap-2 px-4 py-2 bg-white/[0.04] rounded-lg text-[12px] text-white hover:bg-white/[0.06] transition-colors"
+                    >
                       <Download className="w-3.5 h-3.5" />
                       Download WAV
                     </button>

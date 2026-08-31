@@ -319,9 +319,20 @@ class EdgeTTS(TTSProvider):
         try:
             communicate = self.client.Communicate(text, voice)
             
+            # Collect all audio data
+            audio_data = b""
             async for chunk in communicate.stream():
                 if chunk["type"] == "audio":
-                    yield chunk["data"]
+                    audio_data += chunk["data"]
+            
+            if not audio_data:
+                logger.error("Edge TTS returned no audio data")
+                return
+            
+            # Yield in chunks for streaming
+            chunk_size = 4096
+            for i in range(0, len(audio_data), chunk_size):
+                yield audio_data[i:i + chunk_size]
                     
         except Exception as e:
             logger.error("Edge TTS synthesis failed", error=str(e), voice=voice)
@@ -403,20 +414,21 @@ class CoquiTTS(TTSProvider):
             voice_id: Path to reference audio file for cloning, or None for default voice
             language: Language code (en, es, fr, de, it, pt, pl, tr, ru, nl, cs, ar, zh, ja, ko, hu, hi)
         """
-        import io
-        import soundfile as sf
-        import numpy as np
+        import tempfile
+        import os
         
+        tmp_path = None
         try:
-            # Create output buffer
-            output_buffer = io.BytesIO()
+            # Create temp output file (tts_to_file needs a file path, not BytesIO)
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+                tmp_path = tmp.name
             
             if voice_id and voice_id.endswith(('.wav', '.mp3', '.flac', '.ogg')):
                 # Voice cloning mode - use reference audio
                 logger.info("Cloning voice from reference", reference=voice_id)
                 self.model.tts_to_file(
                     text=text,
-                    file_path=output_buffer,
+                    file_path=tmp_path,
                     speaker_wav=voice_id,
                     language=language
                 )
@@ -424,16 +436,17 @@ class CoquiTTS(TTSProvider):
                 # Default voice synthesis
                 self.model.tts_to_file(
                     text=text,
-                    file_path=output_buffer,
+                    file_path=tmp_path,
                     speaker=voice_id
                 )
             
-            # Read the audio data
-            output_buffer.seek(0)
-            audio_data, sample_rate = sf.read(output_buffer, format='RAW', dtype='int16')
+            # Read the generated audio file
+            with open(tmp_path, 'rb') as f:
+                audio_bytes = f.read()
             
-            # Convert to bytes
-            audio_bytes = audio_data.tobytes()
+            if len(audio_bytes) == 0:
+                logger.error("Coqui TTS generated empty audio")
+                raise ValueError("TTS model generated empty audio data")
             
             # Yield in chunks for streaming
             chunk_size = 4096
@@ -443,6 +456,9 @@ class CoquiTTS(TTSProvider):
         except Exception as e:
             logger.error("Coqui TTS synthesis failed", error=str(e))
             raise
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                os.remove(tmp_path)
     
     async def synthesize_with_clone(
         self,
