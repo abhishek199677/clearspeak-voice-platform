@@ -5,6 +5,7 @@ Abstract base class and implementations for speech-to-text services.
 
 from abc import ABC, abstractmethod
 from typing import AsyncGenerator, Optional
+import asyncio
 import structlog
 from backend.models.schemas import TranscriptMessage
 
@@ -104,7 +105,7 @@ class DeepgramASR(ASRProvider):
         
         dg_connection = self.client.listen.live.v("1")
         
-        # Track connection state
+        transcript_queue: asyncio.Queue = asyncio.Queue()
         is_connected = False
         
         async def on_open(self, **kwargs):
@@ -115,17 +116,18 @@ class DeepgramASR(ASRProvider):
         async def on_transcript(self, result, **kwargs):
             transcript = result.channel.alternatives[0]
             if transcript.transcript.strip():
-                yield TranscriptMessage(
+                await transcript_queue.put(TranscriptMessage(
                     session_id=session_id,
                     transcript=transcript.transcript,
                     confidence=transcript.confidence,
                     is_final=result.is_final,
                     language=language
-                )
+                ))
         
         async def on_close(self, **kwargs):
             nonlocal is_connected
             is_connected = False
+            await transcript_queue.put(None)
             logger.debug("Deepgram connection closed", session_id=session_id)
         
         dg_connection.on(LiveTranscriptionEvents.Open, on_open)
@@ -145,14 +147,31 @@ class DeepgramASR(ASRProvider):
         
         await dg_connection.start(options)
         
+        async def feed_audio():
+            try:
+                async for audio_chunk in audio_stream:
+                    if is_connected:
+                        await dg_connection.send(audio_chunk)
+            except Exception as e:
+                logger.error("Stream transcription error", error=str(e), session_id=session_id)
+            finally:
+                await dg_connection.finish()
+        
+        feed_task = asyncio.create_task(feed_audio())
+        
         try:
-            async for audio_chunk in audio_stream:
-                if is_connected:
-                    await dg_connection.send(audio_chunk)
-        except Exception as e:
-            logger.error("Stream transcription error", error=str(e), session_id=session_id)
+            while True:
+                item = await transcript_queue.get()
+                if item is None:
+                    break
+                yield item
         finally:
-            await dg_connection.finish()
+            if not feed_task.done():
+                feed_task.cancel()
+                try:
+                    await feed_task
+                except asyncio.CancelledError:
+                    pass
     
     async def transcribe_audio(
         self,
