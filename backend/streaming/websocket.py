@@ -380,8 +380,8 @@ class VoiceWebSocketHandler:
         
         # Set translation languages
         elif msg_type == "set_languages":
-            source_lang = data.get("source_language", "hi")
-            target_lang = data.get("target_language", "en")
+            source_lang = data.get("source_language", "en")
+            target_lang = data.get("target_language", "te")
             
             await self.pipeline.set_translation_languages(
                 session_id, source_lang, target_lang

@@ -218,8 +218,8 @@ export default function VoiceChat() {
   
   // Mode and language settings
   const [pipelineMode, setPipelineMode] = useState('translation') // 'agent' or 'translation'
-  const [sourceLanguage, setSourceLanguage] = useState('hi')
-  const [targetLanguage, setTargetLanguage] = useState('ta')
+  const [sourceLanguage, setSourceLanguage] = useState('en')
+  const [targetLanguage, setTargetLanguage] = useState('te')
   const [translationEnabled, setTranslationEnabled] = useState(false)
   const [showLanguageModal, setShowLanguageModal] = useState(false)
   const [languagesConfirmed, setLanguagesConfirmed] = useState(false)

@@ -316,8 +316,8 @@ class VoicePipeline:
             }
         
         trans_session = self._translation_sessions[session_id]
-        source_lang = trans_session.get("source_language") or "hi"
-        target_lang = trans_session.get("target_language") or "en"
+        source_lang = trans_session.get("source_language") or "en"
+        target_lang = trans_session.get("target_language") or "te"
         
         await self.sessions.update_session_state(session_id, SessionState.LISTENING)
         
@@ -562,25 +562,18 @@ class VoicePipeline:
         session_id: str,
         text: str
     ) -> AsyncGenerator[VoiceMessage, None]:
-        """Process text through translation mode. Detects questions and answers them via LLM."""
+        """Process text through translation mode. Always translates, never routes to LLM."""
         start_time = datetime.utcnow()
-        
-        # If it's a question, route to agent mode for answering
-        if self._is_question(text):
-            logger.info("Question detected in translation mode, routing to agent", text=text[:50])
-            async for msg in self._process_text_agent(session_id, text):
-                yield msg
-            return
         
         if session_id not in self._translation_sessions:
             self._translation_sessions[session_id] = {
-                "source_language": "hi",
-                "target_language": "en",
+                "source_language": "en",
+                "target_language": "te",
             }
         
         trans_session = self._translation_sessions[session_id]
-        source_lang = trans_session.get("source_language") or "hi"
-        target_lang = trans_session.get("target_language") or "en"
+        source_lang = trans_session.get("source_language") or "en"
+        target_lang = trans_session.get("target_language") or "te"
         
         try:
             # Detect source language if not set
