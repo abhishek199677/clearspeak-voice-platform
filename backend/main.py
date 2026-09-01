@@ -232,10 +232,10 @@ if settings.prometheus_enabled:
 async def root():
     """Serve the main UI."""
     import os
-    frontend_path = "frontend-app/index.html" if os.path.exists("frontend-app/index.html") else "frontend/index.html"
-    if os.path.exists(frontend_path):
-        with open(frontend_path, "r") as f:
-            return HTMLResponse(content=f.read())
+    for path in ["frontend-app/dist/index.html", "frontend-app/index.html", "frontend/index.html"]:
+        if os.path.exists(path):
+            with open(path, "r") as f:
+                return HTMLResponse(content=f.read())
     return HTMLResponse(content="<h1>ClearSpeak AI - Backend Running</h1><p>API docs: <a href='/api/docs'>/api/docs</a></p>")
 
 
@@ -1075,9 +1075,36 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str, user_id: Opt
     await handler.handle_connection(websocket, session_id, user_id)
 
 
+# SPA catch-all route — must be after all API routes
+@app.get("/{full_path:path}", response_class=HTMLResponse)
+async def serve_spa(full_path: str):
+    """Catch-all for SPA routing — serve index.html for non-API routes."""
+    import os
+    # If the request is for an actual file in dist, serve it directly
+    file_path = f"frontend-app/dist/{full_path}"
+    if os.path.isfile(file_path):
+        with open(file_path, "rb") as f:
+            content = f.read()
+        media_type = "application/octet-stream"
+        if full_path.endswith(".js"):
+            media_type = "application/javascript"
+        elif full_path.endswith(".css"):
+            media_type = "text/css"
+        elif full_path.endswith(".html"):
+            media_type = "text/html"
+        return HTMLResponse(content=content, media_type=media_type)
+    # Otherwise serve index.html for SPA routing
+    index_path = "frontend-app/dist/index.html"
+    if os.path.exists(index_path):
+        with open(index_path, "r") as f:
+            return HTMLResponse(content=f.read())
+    return HTMLResponse(content="<h1>ClearSpeak AI - Backend Running</h1><p>API docs: <a href='/api/docs'>/api/docs</a></p>")
+
+
 # Mount static files - must be last to avoid catching API routes
-# Only mount if the frontend directory exists
 import os
+if os.path.exists("frontend-app/dist"):
+    app.mount("/assets", StaticFiles(directory="frontend-app/dist/assets"), name="static-assets")
 if os.path.exists("frontend"):
     app.mount("/static", StaticFiles(directory="frontend"), name="static")
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, Globe } from 'lucide-react'
+import { Menu, X, Globe, Activity } from 'lucide-react'
 
 const navItems = [
   { label: 'Features', href: '#features' },
@@ -54,6 +55,13 @@ export default function Navbar() {
           </div>
 
           <div className="hidden lg:flex items-center gap-3">
+            <Link
+              to="/admin"
+              className="flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium text-gray-400 hover:text-white border border-white/[0.08] hover:border-white/[0.15] rounded-full transition-all duration-200"
+            >
+              <Activity className="w-3.5 h-3.5" />
+              Monitor
+            </Link>
             <a href="#voice-chat" className="px-5 py-2.5 text-[13px] font-medium text-gray-300 hover:text-white transition-colors duration-200">
               Try Demo
             </a>
@@ -98,6 +106,10 @@ export default function Navbar() {
                 ))}
               </div>
               <div className="mt-6 pt-6 border-t border-white/[0.06] space-y-4">
+                <Link to="/admin" onClick={() => setIsMobileOpen(false)} className="flex items-center gap-2 text-[15px] text-gray-400 hover:text-white">
+                  <Activity className="w-4 h-4" />
+                  Monitor
+                </Link>
                 <a href="#voice-chat" onClick={() => setIsMobileOpen(false)} className="block text-[15px] text-gray-400 hover:text-white">Try Demo</a>
                 <button className="w-full px-6 py-3 bg-gradient-to-r from-[#6C3CE1] to-[#9B6DFF] rounded-full text-[14px] font-semibold">
                   Get Started

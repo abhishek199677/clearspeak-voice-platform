@@ -1,3 +1,4 @@
+import { Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
 import HowItWorks from './components/HowItWorks'
@@ -17,10 +18,12 @@ import FAQ from './components/FAQ'
 import Footer from './components/Footer'
 import ScrollProgress from './components/ScrollProgress'
 import BackToTop from './components/BackToTop'
+import AdminLogin from './components/AdminLogin'
+import Monitor from './components/Monitor'
 
-function App() {
+function LandingPage() {
   return (
-    <div className="min-h-screen bg-[#0A0A0F]">
+    <>
       <ScrollProgress />
       <Navbar />
       <Hero />
@@ -54,6 +57,18 @@ function App() {
       <FAQ />
       <Footer />
       <BackToTop />
+    </>
+  )
+}
+
+function App() {
+  return (
+    <div className="min-h-screen bg-[#0A0A0F]">
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/admin" element={<AdminLogin />} />
+        <Route path="/admin/dashboard" element={<Monitor />} />
+      </Routes>
     </div>
   )
 }

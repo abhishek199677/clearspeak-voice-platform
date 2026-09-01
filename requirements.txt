@@ -1,17 +1,20 @@
 # Core
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
+slowapi
+python-multipart
 python-dotenv==1.0.0
 pydantic==2.5.3
 pydantic-settings==2.1.0
 
 # WebSocket & Streaming
 websockets==12.0
-aiortc==1.7.0
+aiortc
 
 # ASR Providers (Standard)
 deepgram-sdk==3.2.7
-openai-whisper==20231117
+av>=12.0.0
+openai-whisper
 
 # ASR Providers (Indic)
 # Bhashini, AI4Bharat use httpx (included below)

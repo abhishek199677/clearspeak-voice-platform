@@ -21,7 +21,7 @@ services:
       - DEFAULT_LANGUAGE=en
       - INDIA_DEFAULT_LANGUAGE=hi
       - ENABLE_AUTO_TRANSLATE=true
-      - INDIA_LANGUAGE_CODES=hi,bn,ta,te,ml,kn,gu,mr,pa,ur,as,or,sa,gom,doi,mai,sat,ks,mni,brx,sd,ne
+      - INDIA_LANGUAGE_CODES=["hi","bn","ta","te","ml","kn","gu","mr","pa","ur","as","or","sa","gom","doi","mai","sat","ks","mni","brx","sd","ne"]
     depends_on:
       - redis
     volumes:
@@ -56,9 +56,16 @@ services:
       - "3000:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_SECURITY_COOKIE_SAMESITE=none
+      - GF_SECURITY_COOKIE_SECURE=false
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/clearspeak.json
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./infrastructure/grafana:/var/lib/grafana/dashboards
+      - ./infrastructure/grafana/dashboards:/var/lib/grafana/dashboards
+      - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning
     restart: unless-stopped
 
 volumes:

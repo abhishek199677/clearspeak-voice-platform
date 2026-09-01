@@ -4,10 +4,11 @@ Production-grade configuration with environment-based settings.
 India's sovereign communication platform.
 """
 
+import json
 from functools import lru_cache
 from typing import Optional, List
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import Field, field_validator
 
 
 class Settings(BaseSettings):
@@ -89,6 +90,16 @@ class Settings(BaseSettings):
         ],
         env="INDIA_LANGUAGE_CODES"
     )
+    
+    @field_validator("india_language_codes", mode="before")
+    @classmethod
+    def parse_language_codes(cls, v):
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                return [code.strip() for code in v.split(",") if code.strip()]
+        return v
     
     # Voicebox
     voicebox_url: str = Field(default="http://127.0.0.1:17493", env="VOICEBOX_URL")

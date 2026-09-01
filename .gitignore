@@ -62,8 +62,10 @@ tools/OmniVoice-Studio/
 # Old frontend (replaced by frontend-app)
 frontend/
 
-# Infrastructure (single config, not maintained)
-infrastructure/
+# Infrastructure monitoring data (not config)
+monitoring/data/
+prometheus/prometheus_data/
+grafana/grafana_data/
 
 # Compiled
 *.pyc
