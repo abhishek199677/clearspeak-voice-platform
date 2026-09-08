@@ -1,54 +1,48 @@
-import { motion } from 'framer-motion'
-
 const languages = [
-  // 22 Scheduled Languages of India
   'Hindi', 'Bengali', 'Tamil', 'Telugu', 'Malayalam',
   'Kannada', 'Gujarati', 'Marathi', 'Punjabi', 'Urdu',
-  'Assamese', 'Odia', 'Sanskrit', 'Konkani', 'Dogri',
-  'Maithili', 'Santali', 'Kashmiri', 'Manipuri', 'Bodo',
-  'Sindhi', 'Nepali',
-  // Global languages
-  'English', 'Spanish', 'French', 'German', 'Chinese',
-  'Japanese', 'Korean', 'Arabic', 'Portuguese', 'Russian',
+  'Assamese', 'Odia', 'English', 'Spanish', 'French',
+  'German', 'Chinese', 'Japanese', 'Korean', 'Arabic',
+  'Portuguese', 'Russian',
 ]
 
 export default function LanguageMarquee() {
   return (
-    <section className="relative py-24 overflow-hidden bg-dark">
-      <div className="absolute left-0 top-0 bottom-0 w-40 bg-gradient-to-r from-[#08080D] to-transparent z-10" />
-      <div className="absolute right-0 top-0 bottom-0 w-40 bg-gradient-to-l from-[#08080D] to-transparent z-10" />
+    <section className="relative py-16 overflow-hidden" style={{ background: 'var(--bg)' }}>
+      <div className="absolute left-0 top-0 bottom-0 w-40 z-10" style={{ background: `linear-gradient(to right, var(--bg), transparent)` }} />
+      <div className="absolute right-0 top-0 bottom-0 w-40 z-10" style={{ background: `linear-gradient(to left, var(--bg), transparent)` }} />
 
-      <div className="relative mb-5">
-        <div className="marquee flex gap-4 whitespace-nowrap">
+      <div className="relative mb-4">
+        <div className="flex gap-3 whitespace-nowrap" style={{ animation: 'marquee 40s linear infinite' }}>
           {[...languages, ...languages].map((lang, i) => (
-            <motion.div
+            <div
               key={`row1-${i}`}
-              whileHover={{ scale: 1.05 }}
-              className="px-5 py-2.5 bg-white/[0.03] border border-white/[0.06] rounded-full text-[13px] font-medium text-gray-500 hover:text-white hover:bg-white/[0.06] hover:border-white/[0.1] transition-all cursor-default"
+              className="px-4 py-2 rounded-full caption cursor-default transition-colors duration-200"
+              style={{ background: 'var(--input-bg)', border: '1px solid var(--border-subtle)', color: 'var(--text-tertiary)' }}
             >
               {lang}
-            </motion.div>
+            </div>
           ))}
         </div>
       </div>
 
       <div className="relative">
-        <div className="marquee-reverse flex gap-4 whitespace-nowrap">
+        <div className="flex gap-3 whitespace-nowrap" style={{ animation: 'marquee-reverse 40s linear infinite' }}>
           {[...languages.reverse(), ...languages].map((lang, i) => (
-            <motion.div
+            <div
               key={`row2-${i}`}
-              whileHover={{ scale: 1.05 }}
-              className="px-5 py-2.5 bg-white/[0.03] border border-white/[0.06] rounded-full text-[13px] font-medium text-gray-500 hover:text-white hover:bg-white/[0.06] hover:border-white/[0.1] transition-all cursor-default"
+              className="px-4 py-2 rounded-full caption cursor-default transition-colors duration-200"
+              style={{ background: 'var(--input-bg)', border: '1px solid var(--border-subtle)', color: 'var(--text-tertiary)' }}
             >
               {lang}
-            </motion.div>
+            </div>
           ))}
         </div>
       </div>
 
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="px-8 py-4 bg-[#08080D]/90 backdrop-blur-xl rounded-2xl border border-white/[0.08]">
-          <span className="text-2xl font-bold gradient-text">22 Indian Languages</span>
+        <div className="px-6 py-3 rounded-xl backdrop-blur-xl" style={{ background: 'var(--bg-overlay)', border: '1px solid var(--border)' }}>
+          <span className="text-xl font-bold" style={{ fontFamily: "'Space Grotesk', sans-serif", color: 'var(--primary)' }}>22 Indian Languages</span>
         </div>
       </div>
     </section>

@@ -1,19 +1,24 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, Globe, Activity } from 'lucide-react'
+import { Menu, X, Globe, Sun, Moon } from 'lucide-react'
+import { useTheme } from '../ThemeContext'
 
 const navItems = [
   { label: 'Features', href: '#features' },
-  { label: 'How It Works', href: '#about' },
   { label: 'Languages', href: '#languages' },
+  { label: 'Chat', path: '/chat' },
+  { label: 'Calls', path: '/calls' },
+  { label: 'Agents', path: '/agents' },
+  { label: 'Streams', path: '/streams' },
+  { label: 'Hub', path: '/productivity' },
   { label: 'Try Now', href: '#voice-chat' },
-  { label: 'Pricing', href: '#pricing' },
 ]
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const { theme, toggleTheme } = useTheme()
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20)
@@ -27,27 +32,45 @@ export default function Navbar() {
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-          isScrolled ? 'bg-[#08080D]/80 backdrop-blur-xl border-b border-white/[0.04]' : 'bg-transparent'
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+          isScrolled ? 'backdrop-blur-xl border-b' : 'bg-transparent'
         }`}
+        style={{
+          backgroundColor: isScrolled ? 'var(--bg-overlay)' : 'transparent',
+          borderColor: isScrolled ? 'var(--border-subtle)' : 'transparent',
+        }}
       >
         <div className="max-w-7xl mx-auto px-5 sm:px-8 flex items-center justify-between h-16 sm:h-[72px]">
           <a href="#" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br from-[#6C3CE1] to-[#9B6DFF] flex items-center justify-center">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center" style={{ background: 'var(--primary)' }}>
               <Globe className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
             <div className="flex flex-col">
-              <span className="text-[17px] sm:text-lg font-bold leading-tight">ClearSpeak</span>
-              <span className="text-[9px] text-gray-500 leading-tight hidden sm:block">India's Voice Platform</span>
+              <span className="text-[17px] sm:text-lg font-bold leading-tight" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>ClearSpeak</span>
+              <span className="text-[9px] leading-tight hidden sm:block" style={{ color: 'var(--text-tertiary)' }}>India's Voice Platform</span>
             </div>
           </a>
 
           <div className="hidden lg:flex items-center gap-7">
-            {navItems.map((item) => (
+            {navItems.map((item) => item.path ? (
+              <Link
+                key={item.label}
+                to={item.path}
+                className="caption"
+                style={{ color: 'var(--text-secondary)', transition: 'color 0.2s' }}
+                onMouseEnter={e => e.target.style.color = 'var(--text-primary)'}
+                onMouseLeave={e => e.target.style.color = 'var(--text-secondary)'}
+              >
+                {item.label}
+              </Link>
+            ) : (
               <a
                 key={item.label}
                 href={item.href}
-                className="text-[13px] font-medium text-gray-400 hover:text-white transition-colors duration-200"
+                className="caption"
+                style={{ color: 'var(--text-secondary)', transition: 'color 0.2s' }}
+                onMouseEnter={e => e.target.style.color = 'var(--text-primary)'}
+                onMouseLeave={e => e.target.style.color = 'var(--text-secondary)'}
               >
                 {item.label}
               </a>
@@ -55,31 +78,45 @@ export default function Navbar() {
           </div>
 
           <div className="hidden lg:flex items-center gap-3">
+            <button
+              onClick={toggleTheme}
+              className="btn-ghost"
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
             <Link
               to="/admin"
-              className="flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium text-gray-400 hover:text-white border border-white/[0.08] hover:border-white/[0.15] rounded-full transition-all duration-200"
+              className="btn-secondary"
+              style={{ padding: '0.5rem 1rem', fontSize: '0.8125rem' }}
             >
-              <Activity className="w-3.5 h-3.5" />
               Monitor
             </Link>
-            <a href="#voice-chat" className="px-5 py-2.5 text-[13px] font-medium text-gray-300 hover:text-white transition-colors duration-200">
+            <a href="#voice-chat" className="btn-ghost" style={{ fontSize: '0.8125rem' }}>
               Try Demo
             </a>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="px-5 py-2.5 bg-gradient-to-r from-[#6C3CE1] to-[#9B6DFF] rounded-full text-[13px] font-semibold hover:shadow-[0_12px_32px_rgba(108,60,225,0.3)] transition-all duration-300"
-            >
+            <button className="btn-primary" style={{ padding: '0.625rem 1.25rem', fontSize: '0.8125rem' }}>
               Get Started
-            </motion.button>
+            </button>
           </div>
 
-          <button
-            onClick={() => setIsMobileOpen(!isMobileOpen)}
-            className="lg:hidden p-2 text-gray-400 hover:text-white"
-          >
-            {isMobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+          <div className="flex items-center gap-2 lg:hidden">
+            <button
+              onClick={toggleTheme}
+              className="p-2"
+              style={{ color: 'var(--text-secondary)' }}
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+            <button
+              onClick={() => setIsMobileOpen(!isMobileOpen)}
+              className="p-2"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              {isMobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
         </div>
       </motion.nav>
 
@@ -90,28 +127,49 @@ export default function Navbar() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
-            className="fixed top-16 left-0 right-0 z-50 bg-[#08080D]/95 backdrop-blur-xl border-b border-white/[0.06] lg:hidden"
+            className="fixed top-16 left-0 right-0 z-50 backdrop-blur-xl border-b lg:hidden"
+            style={{
+              backgroundColor: 'var(--bg-overlay)',
+              borderColor: 'var(--border-subtle)',
+            }}
           >
             <div className="max-w-7xl mx-auto px-5 py-6">
               <div className="space-y-4">
-                {navItems.map((item) => (
+                {navItems.map((item) => item.path ? (
+                  <Link
+                    key={item.label}
+                    to={item.path}
+                    onClick={() => setIsMobileOpen(false)}
+                    className="block body"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    {item.label}
+                  </Link>
+                ) : (
                   <a
                     key={item.label}
                     href={item.href}
                     onClick={() => setIsMobileOpen(false)}
-                    className="block text-[15px] font-medium text-gray-400 hover:text-white transition-colors"
+                    className="block body"
+                    style={{ color: 'var(--text-secondary)' }}
                   >
                     {item.label}
                   </a>
                 ))}
               </div>
-              <div className="mt-6 pt-6 border-t border-white/[0.06] space-y-4">
-                <Link to="/admin" onClick={() => setIsMobileOpen(false)} className="flex items-center gap-2 text-[15px] text-gray-400 hover:text-white">
-                  <Activity className="w-4 h-4" />
+              <div className="mt-6 pt-6 space-y-4" style={{ borderTop: '1px solid var(--border)' }}>
+                <Link
+                  to="/admin"
+                  onClick={() => setIsMobileOpen(false)}
+                  className="flex items-center gap-2 body"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
                   Monitor
                 </Link>
-                <a href="#voice-chat" onClick={() => setIsMobileOpen(false)} className="block text-[15px] text-gray-400 hover:text-white">Try Demo</a>
-                <button className="w-full px-6 py-3 bg-gradient-to-r from-[#6C3CE1] to-[#9B6DFF] rounded-full text-[14px] font-semibold">
+                <a href="#voice-chat" onClick={() => setIsMobileOpen(false)} className="block body" style={{ color: 'var(--text-secondary)' }}>
+                  Try Demo
+                </a>
+                <button className="btn-primary w-full justify-center">
                   Get Started
                 </button>
               </div>

@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { Routes, Route } from 'react-router-dom'
+import { useTheme } from './ThemeContext'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
 import HowItWorks from './components/HowItWorks'
@@ -20,6 +22,13 @@ import ScrollProgress from './components/ScrollProgress'
 import BackToTop from './components/BackToTop'
 import AdminLogin from './components/AdminLogin'
 import Monitor from './components/Monitor'
+import ChannelBrowser from './components/ChannelBrowser'
+import ChatRoom from './components/ChatRoom'
+import OnlineUsers from './components/OnlineUsers'
+import VoiceCallUI from './components/VoiceCallUI'
+import AgentManager from './components/AgentManager'
+import StreamManager from './components/StreamManager'
+import ProductivityDashboard from './components/ProductivityDashboard'
 
 function LandingPage() {
   return (
@@ -27,33 +36,19 @@ function LandingPage() {
       <ScrollProgress />
       <Navbar />
       <Hero />
-      <div className="section-divider" />
       <Partners />
-      <div className="section-divider" />
       <HowItWorks />
-      <div className="section-divider" />
       <UseCases />
-      <div className="section-divider" />
       <RotatingFeatures />
-      <div className="section-divider" />
       <DeployAgent />
-      <div className="section-divider" />
       <AIConversations />
-      <div className="section-divider" />
       <LanguageSupport />
-      <div className="section-divider" />
       <VoiceClone />
-      <div className="section-divider" />
       <Features />
-      <div className="section-divider" />
       <VoiceChat />
-      <div className="section-divider" />
       <Dashboard />
-      <div className="section-divider" />
       <LanguageMarquee />
-      <div className="section-divider" />
       <Pricing />
-      <div className="section-divider" />
       <FAQ />
       <Footer />
       <BackToTop />
@@ -61,11 +56,84 @@ function LandingPage() {
   )
 }
 
-function App() {
+function ChatPage() {
+  const [activeChannel, setActiveChannel] = useState(null)
+  const userId = useState(() => 'user_' + Math.random().toString(36).slice(2, 8))[0]
+
   return (
-    <div className="min-h-screen bg-[#0A0A0F]">
+    <div className="chat-page">
+      <Navbar />
+      <div className="chat-layout">
+        <aside className="chat-sidebar chat-sidebar--left">
+          <ChannelBrowser activeChannel={activeChannel} onSelect={setActiveChannel} />
+        </aside>
+        <main className="chat-main">
+          <ChatRoom channel={activeChannel} userId={userId} />
+        </main>
+        <aside className="chat-sidebar chat-sidebar--right">
+          <OnlineUsers />
+        </aside>
+      </div>
+    </div>
+  )
+}
+
+function CallsPage() {
+  return (
+    <div className="page-container">
+      <Navbar />
+      <main className="page-content">
+        <VoiceCallUI />
+      </main>
+    </div>
+  )
+}
+
+function AgentsPage() {
+  return (
+    <div className="page-container">
+      <Navbar />
+      <main className="page-content">
+        <AgentManager />
+      </main>
+    </div>
+  )
+}
+
+function StreamsPage() {
+  return (
+    <div className="page-container">
+      <Navbar />
+      <main className="page-content">
+        <StreamManager />
+      </main>
+    </div>
+  )
+}
+
+function ProductivityPage() {
+  return (
+    <div className="page-container">
+      <Navbar />
+      <main className="page-content">
+        <ProductivityDashboard />
+      </main>
+    </div>
+  )
+}
+
+function App() {
+  const { theme } = useTheme()
+
+  return (
+    <div className={`min-h-screen transition-theme ${theme}`} style={{ background: 'var(--bg)', color: 'var(--text-primary)' }}>
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/chat" element={<ChatPage />} />
+        <Route path="/calls" element={<CallsPage />} />
+        <Route path="/agents" element={<AgentsPage />} />
+        <Route path="/streams" element={<StreamsPage />} />
+        <Route path="/productivity" element={<ProductivityPage />} />
         <Route path="/admin" element={<AdminLogin />} />
         <Route path="/admin/dashboard" element={<Monitor />} />
       </Routes>

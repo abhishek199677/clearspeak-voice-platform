@@ -29,28 +29,23 @@ const faqs = [
   },
 ]
 
-function FaqItem({ faq, index, isOpen, toggle }) {
+function FaqItem({ faq, isOpen, toggle }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.08, ease: [0.16, 1, 0.3, 1] }}
-      className="border-b border-white/[0.06]"
-    >
+    <div className="accordion-item">
       <button
         onClick={toggle}
-        className="w-full py-5 flex items-center justify-between text-left group"
+        className="accordion-trigger"
       >
-        <span className="text-[15px] font-medium text-white group-hover:text-[#6C3CE1] transition-colors pr-4">{faq.question}</span>
+        <span style={{ color: isOpen ? 'var(--primary)' : 'var(--text-primary)' }}>{faq.question}</span>
         <motion.div
           animate={{ rotate: isOpen ? 180 : 0 }}
           transition={{ duration: 0.3 }}
           className="flex-shrink-0"
         >
           {isOpen ? (
-            <Minus className="w-4 h-4 text-[#6C3CE1]" />
+            <Minus className="w-4 h-4" style={{ color: 'var(--primary)' }} />
           ) : (
-            <Plus className="w-4 h-4 text-gray-500" />
+            <Plus className="w-4 h-4" style={{ color: 'var(--text-tertiary)' }} />
           )}
         </motion.div>
       </button>
@@ -63,11 +58,11 @@ function FaqItem({ faq, index, isOpen, toggle }) {
             transition={{ duration: 0.3 }}
             className="overflow-hidden"
           >
-            <p className="text-[14px] text-gray-400 pb-5 leading-relaxed">{faq.answer}</p>
+            <p className="body pb-5" style={{ color: 'var(--text-secondary)' }}>{faq.answer}</p>
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   )
 }
 
@@ -77,24 +72,24 @@ export default function FAQ() {
   const [openIndex, setOpenIndex] = useState(0)
 
   return (
-    <section id="about" className="relative py-32 overflow-hidden">
-      <div className="absolute inset-0 bg-dark" />
-
-      <div ref={ref} className="relative z-10 max-w-3xl mx-auto px-8">
+    <section className="section-lg" style={{ background: 'var(--bg)' }}>
+      <div ref={ref} className="max-w-3xl mx-auto px-5 sm:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
           className="text-center mb-14"
         >
-          <span className="text-[#00D4AA] font-semibold tracking-wider uppercase text-[11px]">FAQ</span>
-          <h2 className="text-[2.75rem] lg:text-[3.5rem] font-bold mt-4 mb-5 tracking-tight">
+          <div className="overline-dot justify-center mb-4" style={{ color: 'var(--success)' }}>
+            <span style={{ color: 'var(--success)' }}>FAQ</span>
+          </div>
+          <h2 className="heading-1" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
             Frequently Asked{' '}
-            <span className="gradient-text">Questions</span>
+            <span style={{ color: 'var(--primary)' }}>Questions</span>
           </h2>
         </motion.div>
 
-        <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-8">
+        <div className="rounded-2xl p-8" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
           {faqs.map((faq, i) => (
             <FaqItem
               key={i}

@@ -1,6 +1,6 @@
-import { motion, useInView, AnimatePresence } from 'framer-motion'
+import { motion, useInView } from 'framer-motion'
 import { useRef, useState, useEffect } from 'react'
-import { Languages, Mic, Volume2, ArrowRightLeft, Shield, Zap, Globe, Users, Radio, Bot, Video, Headphones } from 'lucide-react'
+import { Languages, Mic, Volume2, ArrowRightLeft, Shield, Zap, Globe, Radio, Bot, Video, Headphones } from 'lucide-react'
 
 const services = [
   {

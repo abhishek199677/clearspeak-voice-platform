@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
-import { Mic, Upload, Play, Pause, Download, Sparkles, AudioWaveform, CheckCircle } from 'lucide-react'
+import { Mic, Upload, Play, Pause, Download, Sparkles, CheckCircle } from 'lucide-react'
 import { cloneVoice } from '../api/platform'
 
 const sampleVoices = [
@@ -36,7 +36,7 @@ export default function VoiceClone() {
   const steps = [
     { label: 'Upload Sample', icon: Upload },
     { label: 'AI Learns', icon: Sparkles },
-    { label: 'Generate', icon: AudioWaveform },
+    { label: 'Generate', icon: Mic },
   ]
 
   function handleFileUpload(e) {
@@ -69,11 +69,10 @@ export default function VoiceClone() {
     setActiveStep(1)
     setError(null)
     setClonedAudioUrl(null)
-    
+
     try {
       let audioFileToClone = uploadedFile
-      
-      // If no file uploaded, fetch the sample voice audio file
+
       if (!audioFileToClone) {
         const sampleFile = sampleVoices[selectedVoice].file
         const response = await fetch(sampleFile)
@@ -83,7 +82,7 @@ export default function VoiceClone() {
         const blob = await response.blob()
         audioFileToClone = new File([blob], `${sampleVoices[selectedVoice].name}.wav`, { type: 'audio/wav' })
       }
-      
+
       const audioBlob = await cloneVoice(audioFileToClone, clonedText)
       const url = URL.createObjectURL(audioBlob)
       setClonedAudioUrl(url)
@@ -105,11 +104,11 @@ export default function VoiceClone() {
         setIsPlaying(false)
         return
       }
-      
+
       audioRef.current = new Audio(clonedAudioUrl)
       audioRef.current.play()
       setIsPlaying(true)
-      
+
       audioRef.current.onended = () => {
         setIsPlaying(false)
         audioRef.current = null
@@ -129,26 +128,22 @@ export default function VoiceClone() {
   }
 
   return (
-    <section className="relative py-28 lg:py-40 overflow-hidden">
-      <div className="absolute inset-0 bg-dark" />
-
-      {/* Background blobs */}
-      <div className="absolute top-[15%] right-[-8%] w-[500px] h-[500px] bg-[#E040FB]/5 rounded-full blur-[120px] gradient-blob" />
-      <div className="absolute bottom-[10%] left-[-5%] w-[400px] h-[400px] bg-[#6C3CE1]/5 rounded-full blur-[100px] gradient-blob-delayed" />
-
-      <div ref={ref} className="relative z-10 max-w-7xl mx-auto px-5 sm:px-8">
+    <section className="section-lg" style={{ background: 'var(--bg)' }}>
+      <div ref={ref} className="max-w-7xl mx-auto px-5 sm:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <span className="text-[#E040FB] font-semibold tracking-wider uppercase text-[11px]">Voice Cloning</span>
-          <h2 className="text-[2.25rem] sm:text-[2.75rem] lg:text-[3.5rem] font-bold mt-4 mb-5 tracking-tight">
+          <div className="overline-dot justify-center mb-4" style={{ color: '#E040FB' }}>
+            <span style={{ color: '#E040FB' }}>Voice Cloning</span>
+          </div>
+          <h2 className="heading-1 mb-5" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
             Clone Any Voice{' '}
-            <span className="gradient-text">in Seconds</span>
+            <span style={{ color: 'var(--primary)' }}>in Seconds</span>
           </h2>
-          <p className="text-[15px] sm:text-[17px] text-gray-400 max-w-2xl mx-auto leading-relaxed">
+          <p className="body-lg max-w-2xl mx-auto" style={{ color: 'var(--text-secondary)' }}>
             Upload a 3-second audio sample. Our AI learns the voice characteristics and generates new speech that sounds exactly like the original.
           </p>
         </motion.div>
@@ -156,31 +151,29 @@ export default function VoiceClone() {
         <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-start">
           {/* Left - Interactive demo */}
           <motion.div
-            initial={{ opacity: 0, x: -30 }}
+            initial={{ opacity: 0, x: -20 }}
             animate={isInView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.7, delay: 0.2 }}
           >
-            <div className="glass-card rounded-[24px] p-7 sm:p-8">
+            <div className="card p-7 sm:p-8">
               {/* Step indicator */}
               <div className="flex items-center justify-between mb-8">
                 {steps.map((step, i) => (
                   <div key={step.label} className="flex items-center gap-2">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 ${
-                      i <= activeStep
-                        ? 'bg-gradient-to-br from-[#E040FB] to-[#F060FF]'
-                        : 'bg-white/[0.04]'
-                    }`}>
-                      <step.icon className={`w-4 h-4 ${i <= activeStep ? 'text-white' : 'text-gray-500'}`} />
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200" style={{
+                      background: i <= activeStep ? '#E040FB' : 'var(--input-bg)',
+                    }}>
+                      <step.icon className="w-4 h-4" style={{ color: i <= activeStep ? 'white' : 'var(--text-tertiary)' }} />
                     </div>
-                    <span className={`text-[12px] font-medium hidden sm:block ${
-                      i <= activeStep ? 'text-white' : 'text-gray-500'
-                    }`}>
+                    <span className="caption hidden sm:block" style={{
+                      color: i <= activeStep ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                    }}>
                       {step.label}
                     </span>
                     {i < steps.length - 1 && (
-                      <div className={`w-8 sm:w-12 h-[2px] mx-1 rounded transition-colors ${
-                        i < activeStep ? 'bg-[#E040FB]/50' : 'bg-white/[0.06]'
-                      }`} />
+                      <div className="w-8 sm:w-12 h-[2px] mx-1 rounded" style={{
+                        background: i < activeStep ? '#E040FB' : 'var(--border)',
+                      }} />
                     )}
                   </div>
                 ))}
@@ -188,9 +181,7 @@ export default function VoiceClone() {
 
               {/* Upload area */}
               <div className="mb-6">
-                <label className="text-[12px] text-gray-500 uppercase tracking-wider font-medium mb-3 block">
-                  Voice Sample
-                </label>
+                <label className="overline mb-3 block" style={{ color: 'var(--text-tertiary)' }}>Voice Sample</label>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -198,27 +189,27 @@ export default function VoiceClone() {
                   onChange={handleFileUpload}
                   className="hidden"
                 />
-                <div 
+                <div
                   onClick={() => fileInputRef.current?.click()}
                   onDrop={handleDrop}
                   onDragOver={(e) => e.preventDefault()}
-                  className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
-                    uploadedFile 
-                      ? 'border-[#00D4AA]/50 bg-[#00D4AA]/5' 
-                      : 'border-white/[0.08] hover:border-[#E040FB]/30'
-                  }`}
+                  className="rounded-xl p-6 text-center cursor-pointer transition-colors"
+                  style={{
+                    border: `2px dashed ${uploadedFile ? 'var(--success)' : 'var(--border)'}`,
+                    background: uploadedFile ? 'var(--primary-ring)' : 'transparent',
+                  }}
                 >
                   {uploadedFile ? (
                     <>
-                      <CheckCircle className="w-8 h-8 text-[#00D4AA] mx-auto mb-3" />
-                      <p className="text-[13px] text-[#00D4AA] font-medium mb-1">{uploadedFile.name}</p>
-                      <p className="text-[11px] text-gray-500">Click to change file</p>
+                      <CheckCircle className="w-8 h-8 mx-auto mb-3" style={{ color: 'var(--success)' }} />
+                      <p className="caption mb-1" style={{ color: 'var(--success)' }}>{uploadedFile.name}</p>
+                      <p className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>Click to change file</p>
                     </>
                   ) : (
                     <>
-                      <Upload className="w-8 h-8 text-gray-600 mx-auto mb-3" />
-                      <p className="text-[13px] text-gray-400 mb-1">Drop audio file here or click to upload</p>
-                      <p className="text-[11px] text-gray-600">MP3, WAV, M4A — 3 to 30 seconds</p>
+                      <Upload className="w-8 h-8 mx-auto mb-3" style={{ color: 'var(--text-tertiary)' }} />
+                      <p className="caption mb-1" style={{ color: 'var(--text-secondary)' }}>Drop audio file here or click to upload</p>
+                      <p className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>MP3, WAV, M4A — 3 to 30 seconds</p>
                     </>
                   )}
                 </div>
@@ -226,31 +217,29 @@ export default function VoiceClone() {
 
               {/* Sample voices */}
               <div className="mb-6">
-                <label className="text-[12px] text-gray-500 uppercase tracking-wider font-medium mb-3 block">
-                  Or Try a Sample Voice
-                </label>
+                <label className="overline mb-3 block" style={{ color: 'var(--text-tertiary)' }}>Or Try a Sample Voice</label>
                 <div className="grid grid-cols-2 gap-2">
                   {sampleVoices.map((voice, i) => (
                     <button
                       key={voice.name}
                       onClick={() => handleSelectSampleVoice(i)}
-                      className={`p-3 rounded-xl text-left transition-all duration-300 ${
-                        selectedVoice === i
-                          ? 'bg-[#E040FB]/10 border border-[#E040FB]/30'
-                          : 'bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04]'
-                      }`}
+                      className="p-3 rounded-xl text-left transition-all duration-200"
+                      style={{
+                        background: selectedVoice === i ? '#E040FB15' : 'var(--input-bg)',
+                        border: `1px solid ${selectedVoice === i ? '#E040FB40' : 'var(--border-subtle)'}`,
+                      }}
                     >
                       <div className="flex items-center gap-2 mb-1">
-                        <div className={`w-6 h-6 rounded-md flex items-center justify-center ${
-                          selectedVoice === i ? 'bg-[#E040FB]' : 'bg-white/[0.06]'
-                        }`}>
+                        <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{
+                          background: selectedVoice === i ? '#E040FB' : 'var(--border)',
+                        }}>
                           <Mic className="w-3 h-3 text-white" />
                         </div>
-                        <span className="text-[12px] font-medium text-white">{voice.name}</span>
+                        <span className="caption" style={{ color: 'var(--text-primary)' }}>{voice.name}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-[10px] text-gray-500 ml-8">
+                      <div className="flex items-center gap-2 text-[10px] ml-8" style={{ color: 'var(--text-tertiary)' }}>
                         <span>{voice.accent}</span>
-                        <span>•</span>
+                        <span>·</span>
                         <span>{voice.duration}</span>
                       </div>
                     </button>
@@ -260,15 +249,18 @@ export default function VoiceClone() {
 
               {/* Text input */}
               <div className="mb-6">
-                <label className="text-[12px] text-gray-500 uppercase tracking-wider font-medium mb-3 block">
-                  Text to Speak
-                </label>
+                <label className="overline mb-3 block" style={{ color: 'var(--text-tertiary)' }}>Text to Speak</label>
                 <textarea
                   value={clonedText}
                   onChange={(e) => setClonedText(e.target.value)}
                   placeholder="Type what you want the cloned voice to say..."
                   rows={3}
-                  className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3 text-[13px] text-white placeholder-gray-600 resize-none focus:outline-none focus:border-[#E040FB]/50 transition-colors"
+                  className="w-full rounded-xl px-4 py-3 caption resize-none"
+                  style={{
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-primary)',
+                  }}
                 />
               </div>
 
@@ -278,7 +270,8 @@ export default function VoiceClone() {
                 whileTap={{ scale: 0.98 }}
                 onClick={handleClone}
                 disabled={isCloning || !clonedText.trim()}
-                className="w-full py-3.5 bg-gradient-to-r from-[#E040FB] to-[#F060FF] rounded-xl text-[14px] font-semibold flex items-center justify-center gap-2 hover:shadow-[0_12px_32px_rgba(224,64,251,0.3)] transition-all duration-300 disabled:opacity-40"
+                className="w-full py-3.5 rounded-xl text-[14px] font-semibold flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-40"
+                style={{ background: '#E040FB', color: 'white' }}
               >
                 {isCloning ? (
                   <>
@@ -296,47 +289,43 @@ export default function VoiceClone() {
               {/* Error message */}
               {error && (
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-xl"
+                  className="mt-4 p-4 rounded-xl"
+                  style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)' }}
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="text-[13px] text-red-400">{error}</span>
-                  </div>
+                  <span className="caption" style={{ color: '#EF4444' }}>{error}</span>
                 </motion.div>
               )}
 
               {/* Result */}
               {activeStep === 2 && !isCloning && clonedAudioUrl && (
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mt-4 p-4 bg-[#00D4AA]/5 border border-[#00D4AA]/20 rounded-xl"
+                  className="mt-4 p-4 rounded-xl"
+                  style={{ background: 'var(--primary-ring)', border: '1px solid var(--success)' }}
                 >
                   <div className="flex items-center gap-2 mb-2">
-                    <CheckCircle className="w-4 h-4 text-[#00D4AA]" />
-                    <span className="text-[13px] text-[#00D4AA] font-medium">Voice cloned successfully</span>
+                    <CheckCircle className="w-4 h-4" style={{ color: 'var(--success)' }} />
+                    <span className="caption" style={{ color: 'var(--success)' }}>Voice cloned successfully</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <button 
+                    <button
                       onClick={handlePlay}
-                      className="flex items-center gap-2 px-4 py-2 bg-white/[0.04] rounded-lg text-[12px] text-white hover:bg-white/[0.06] transition-colors"
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg caption transition-colors"
+                      style={{ background: 'var(--input-bg)', color: 'var(--text-primary)' }}
                     >
                       {isPlaying ? (
-                        <>
-                          <Pause className="w-3.5 h-3.5 fill-white" />
-                          Pause
-                        </>
+                        <><Pause className="w-3.5 h-3.5" /> Pause</>
                       ) : (
-                        <>
-                          <Play className="w-3.5 h-3.5 fill-white" />
-                          Play
-                        </>
+                        <><Play className="w-3.5 h-3.5" /> Play</>
                       )}
                     </button>
-                    <button 
+                    <button
                       onClick={handleDownload}
-                      className="flex items-center gap-2 px-4 py-2 bg-white/[0.04] rounded-lg text-[12px] text-white hover:bg-white/[0.06] transition-colors"
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg caption transition-colors"
+                      style={{ background: 'var(--input-bg)', color: 'var(--text-primary)' }}
                     >
                       <Download className="w-3.5 h-3.5" />
                       Download WAV
@@ -349,57 +338,48 @@ export default function VoiceClone() {
 
           {/* Right - Features + info */}
           <motion.div
-            initial={{ opacity: 0, x: 30 }}
+            initial={{ opacity: 0, x: 20 }}
             animate={isInView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.7, delay: 0.3 }}
           >
-            <h3 className="text-[20px] sm:text-[22px] font-bold text-white mb-4">
+            <h3 className="heading-3 mb-4" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
               Your Voice. Your Data. Your Control.
             </h3>
-            <p className="text-[14px] text-gray-400 leading-relaxed mb-8">
+            <p className="body mb-8" style={{ color: 'var(--text-secondary)' }}>
               Unlike cloud-based cloning services, ClearSpeak runs entirely on your machine. Your voice samples never leave your device. Zero cloud dependency, zero data leakage.
             </p>
 
-            {/* Feature list */}
             <div className="space-y-3 mb-8">
               {features.map((feature, i) => (
                 <motion.div
                   key={feature}
-                  initial={{ opacity: 0, x: -10 }}
+                  initial={{ opacity: 0, x: -8 }}
                   animate={isInView ? { opacity: 1, x: 0 } : {}}
-                  transition={{ delay: 0.4 + i * 0.06 }}
+                  transition={{ delay: 0.4 + i * 0.05 }}
                   className="flex items-start gap-3"
                 >
-                  <CheckCircle className="w-4 h-4 text-[#E040FB] flex-shrink-0 mt-0.5" />
-                  <span className="text-[13px] text-gray-400">{feature}</span>
+                  <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#E040FB' }} />
+                  <span className="caption" style={{ color: 'var(--text-secondary)' }}>{feature}</span>
                 </motion.div>
               ))}
             </div>
 
-            {/* Audio wave visualization */}
-            <div className="glass-card rounded-xl p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <AudioWaveform className="w-4 h-4 text-[#E040FB]" />
-                <span className="text-[12px] text-gray-500 uppercase tracking-wider font-medium">Voice Profile</span>
-              </div>
+            {/* Voice profile visualization */}
+            <div className="card p-5">
+              <div className="overline mb-4" style={{ color: 'var(--text-tertiary)' }}>Voice Profile</div>
               <div className="flex items-end gap-[3px] h-16 mb-4">
                 {[...Array(40)].map((_, i) => (
-                  <motion.div
+                  <div
                     key={i}
-                    animate={{
-                      height: [`${20 + Math.random() * 60}%`, `${10 + Math.random() * 80}%`, `${20 + Math.random() * 60}%`],
+                    className="flex-1 rounded-full min-w-[2px]"
+                    style={{
+                      height: `${20 + Math.random() * 60}%`,
+                      background: `linear-gradient(to top, #E040FB40, #E040FB90)`,
                     }}
-                    transition={{
-                      duration: 1.5 + Math.random(),
-                      repeat: Infinity,
-                      ease: 'easeInOut',
-                      delay: i * 0.05,
-                    }}
-                    className="flex-1 bg-gradient-to-t from-[#E040FB]/40 to-[#F060FF]/60 rounded-full min-w-[2px]"
                   />
                 ))}
               </div>
-              <div className="flex items-center justify-between text-[11px] text-gray-500">
+              <div className="flex items-center justify-between text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
                 <span>{sampleVoices[selectedVoice].name}</span>
                 <span>{sampleVoices[selectedVoice].accent}</span>
               </div>

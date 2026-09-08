@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { motion, useInView, AnimatePresence } from 'framer-motion'
-import { Headphones, Stethoscope, Globe2, GraduationCap, ArrowRight, MessageSquare, Mic, BarChart3, Users } from 'lucide-react'
+import { Headphones, Stethoscope, Globe2, GraduationCap, MessageSquare, Mic, BarChart3 } from 'lucide-react'
 
 const useCases = [
   {
@@ -8,7 +8,7 @@ const useCases = [
     icon: Headphones,
     title: 'Customer Support',
     tagline: 'Deploy AI agents that handle 80% of tickets automatically',
-    description: 'Deploy voice agents that answer calls 24/7, resolve common issues, escalate complex ones, and learn from every interaction. Reduce wait times from minutes to seconds.',
+    description: 'Deploy voice agents that answer calls 24/7, resolve common issues, escalate complex ones, and learn from every interaction.',
     stats: [
       { value: '80%', label: 'Tickets resolved' },
       { value: '<2s', label: 'Response time' },
@@ -22,11 +22,10 @@ const useCases = [
       'Sentiment analysis on every call',
       'Post-call summaries and analytics',
     ],
-    color: '#6C3CE1',
-    gradient: 'from-[#6C3CE1] to-[#9B6DFF]',
+    color: 'var(--primary)',
     demo: {
       user: 'My order hasn\'t arrived yet',
-      agent: 'I can help with that. Let me look up your order... Found it — it\'s out for delivery and should arrive within 2 hours. Would you like me to send you a tracking link?',
+      agent: 'I can help with that. Let me look up your order... Found it — it\'s out for delivery and should arrive within 2 hours.',
     },
   },
   {
@@ -34,7 +33,7 @@ const useCases = [
     icon: Stethoscope,
     title: 'Healthcare',
     tagline: 'HIPAA-compliant voice documentation for clinical workflows',
-    description: 'Automate medical transcription, patient intake, and clinical note-taking. Doctors dictate notes → transcribed → coded → filed. Patients get multilingual appointment reminders.',
+    description: 'Automate medical transcription, patient intake, and clinical note-taking. Doctors dictate notes → transcribed → coded → filed.',
     stats: [
       { value: '98.5%', label: 'Accuracy' },
       { value: '3x', label: 'Faster documentation' },
@@ -48,11 +47,10 @@ const useCases = [
       'Patient intake voice forms',
       'Multilingual appointment reminders',
     ],
-    color: '#00D4AA',
-    gradient: 'from-[#00D4AA] to-[#00F5C4]',
+    color: 'var(--success)',
     demo: {
       user: 'Patient presents with persistent cough for 3 weeks, no fever',
-      agent: 'Transcribed and coded: ICD-10 R05.1 (Acute cough). Suggested follow-up: chest X-ray. Notes filed to patient record.',
+      agent: 'Transcribed and coded: ICD-10 R05.1 (Acute cough). Suggested follow-up: chest X-ray. Notes filed.',
     },
   },
   {
@@ -60,7 +58,7 @@ const useCases = [
     icon: Globe2,
     title: 'Global Teams',
     tagline: 'Real-time translation for international collaboration',
-    description: 'Two people speak different languages → both hear real-time translation. Perfect for international meetings, global customer support, and cross-border deals.',
+    description: 'Two people speak different languages → both hear real-time translation. Perfect for international meetings and cross-border deals.',
     stats: [
       { value: '200+', label: 'Languages' },
       { value: '<100ms', label: 'Translation latency' },
@@ -74,8 +72,7 @@ const useCases = [
       'Meeting transcription in all languages',
       'Custom vocabulary per team',
     ],
-    color: '#FF6B35',
-    gradient: 'from-[#FF6B35] to-[#FF8F6B]',
+    color: 'var(--accent)',
     demo: {
       user: 'Japanese speaker: このプロジェクトの締め切りはいつですか？',
       agent: 'Translated to English: "When is the deadline for this project?" → Response in Japanese sent back.',
@@ -86,7 +83,7 @@ const useCases = [
     icon: GraduationCap,
     title: 'Education',
     tagline: 'AI tutors and multilingual learning at scale',
-    description: 'Create AI tutors that explain concepts in any language, transcribe lectures automatically, and provide personalized feedback to every student.',
+    description: 'Create AI tutors that explain concepts in any language, transcribe lectures automatically, and provide personalized feedback.',
     stats: [
       { value: '1-on-1', label: 'AI tutoring' },
       { value: '200+', label: 'Languages' },
@@ -101,15 +98,12 @@ const useCases = [
       'Student progress analytics',
     ],
     color: '#E040FB',
-    gradient: 'from-[#E040FB] to-[#F060FF]',
     demo: {
       user: 'Explain quantum computing in simple terms',
-      agent: 'Think of a regular computer like a light switch — it\'s either ON or OFF. A quantum computer is like a special light that can be ON, OFF, or both at the same time. This lets it solve certain problems much faster.',
+      agent: 'Think of a regular computer like a light switch — ON or OFF. A quantum computer can be ON, OFF, or both at the same time.',
     },
   },
 ]
-
-const icons = { Headphones, Stethoscope, Globe2, GraduationCap }
 
 export default function UseCases() {
   const ref = useRef(null)
@@ -118,24 +112,21 @@ export default function UseCases() {
   const active = useCases.find((c) => c.id === activeId)
 
   return (
-    <section id="about" className="relative py-28 lg:py-40 overflow-hidden">
-      <div className="absolute inset-0 bg-dark-light" />
-
-      {/* Background blobs */}
-      <div className="absolute top-[10%] right-[-10%] w-[500px] h-[500px] bg-[#6C3CE1]/5 rounded-full blur-[120px] gradient-blob" />
-
-      <div ref={ref} className="relative z-10 max-w-7xl mx-auto px-5 sm:px-8">
+    <section className="section-lg" style={{ background: 'var(--bg-surface)' }}>
+      <div ref={ref} className="max-w-7xl mx-auto px-5 sm:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <span className="text-[#FF6B35] font-semibold tracking-wider uppercase text-[11px]">Use Cases</span>
-          <h2 className="text-[2.25rem] sm:text-[2.75rem] lg:text-[3.5rem] font-bold mt-4 mb-5 tracking-tight">
-            Built for <span className="gradient-text">Every Industry</span>
+          <div className="overline-dot justify-center mb-4" style={{ color: 'var(--accent)' }}>
+            <span style={{ color: 'var(--accent)' }}>Use Cases</span>
+          </div>
+          <h2 className="heading-1 mb-5" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+            Built for <span style={{ color: 'var(--primary)' }}>Every Industry</span>
           </h2>
-          <p className="text-[15px] sm:text-[17px] text-gray-400 max-w-2xl mx-auto leading-relaxed">
+          <p className="body-lg max-w-2xl mx-auto" style={{ color: 'var(--text-secondary)' }}>
             From healthcare to education, ClearSpeak transforms how organizations communicate.
           </p>
         </motion.div>
@@ -147,27 +138,24 @@ export default function UseCases() {
               <motion.button
                 key={uc.id}
                 onClick={() => setActiveId(uc.id)}
-                initial={{ opacity: 0, x: -20 }}
+                initial={{ opacity: 0, x: -15 }}
                 animate={isInView ? { opacity: 1, x: 0 } : {}}
                 transition={{ delay: 0.1 + i * 0.06 }}
-                className={`w-full text-left px-5 py-4 rounded-xl transition-all duration-300 flex items-center gap-3.5 ${
-                  activeId === uc.id
-                    ? 'glass-card bg-white/[0.04] border-white/[0.1]'
-                    : 'bg-transparent border border-transparent hover:bg-white/[0.02]'
+                className={`w-full text-left px-5 py-4 rounded-xl transition-all duration-200 flex items-center gap-3.5 ${
+                  activeId === uc.id ? 'card' : 'hover:opacity-80'
                 }`}
+                style={activeId === uc.id ? {} : { background: 'transparent', border: '1px solid transparent' }}
               >
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
-                  activeId === uc.id ? `bg-gradient-to-br ${uc.gradient}` : 'bg-white/[0.04]'
-                }`}>
-                  <uc.icon className={`w-5 h-5 ${activeId === uc.id ? 'text-white' : 'text-gray-500'}`} />
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200" style={{
+                  background: activeId === uc.id ? uc.color : 'var(--input-bg)',
+                }}>
+                  <uc.icon className="w-5 h-5" style={{ color: activeId === uc.id ? 'white' : 'var(--text-tertiary)' }} />
                 </div>
                 <div>
-                  <p className={`text-[14px] font-semibold transition-colors ${
-                    activeId === uc.id ? 'text-white' : 'text-gray-400'
-                  }`}>
+                  <p className="caption" style={{ color: activeId === uc.id ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
                     {uc.title}
                   </p>
-                  <p className="text-[11px] text-gray-600 mt-0.5 hidden sm:block">{uc.tagline}</p>
+                  <p className="text-[11px] mt-0.5 hidden sm:block" style={{ color: 'var(--text-tertiary)' }}>{uc.tagline}</p>
                 </div>
               </motion.button>
             ))}
@@ -177,37 +165,37 @@ export default function UseCases() {
           <AnimatePresence mode="wait">
             <motion.div
               key={activeId}
-              initial={{ opacity: 0, y: 15 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div className="glass-card rounded-[24px] p-8 sm:p-10">
+              <div className="card p-8 sm:p-10">
                 {/* Header */}
                 <div className="flex items-start gap-4 mb-6">
-                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${active.gradient} flex items-center justify-center flex-shrink-0`}>
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: active.color }}>
                     <active.icon className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-[22px] font-bold text-white">{active.title}</h3>
-                    <p className="text-[13px] text-gray-500 mt-0.5">{active.tagline}</p>
+                    <h3 className="heading-3" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{active.title}</h3>
+                    <p className="caption mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{active.tagline}</p>
                   </div>
                 </div>
 
-                <p className="text-[14px] text-gray-400 leading-relaxed mb-8">{active.description}</p>
+                <p className="body mb-8 max-w-lg" style={{ color: 'var(--text-secondary)' }}>{active.description}</p>
 
                 {/* Stats */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
                   {active.stats.map((stat, i) => (
                     <motion.div
                       key={stat.label}
-                      initial={{ opacity: 0, y: 10 }}
+                      initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.1 + i * 0.05 }}
-                      className="p-3 bg-white/[0.03] border border-white/[0.05] rounded-xl text-center"
+                      className="p-3 rounded-xl text-center" style={{ background: 'var(--input-bg)', border: '1px solid var(--border-subtle)' }}
                     >
-                      <div className="text-[18px] font-bold text-white">{stat.value}</div>
-                      <div className="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">{stat.label}</div>
+                      <div className="text-[18px] font-bold" style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-primary)' }}>{stat.value}</div>
+                      <div className="text-[10px] uppercase tracking-wider mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{stat.label}</div>
                     </motion.div>
                   ))}
                 </div>
@@ -215,45 +203,45 @@ export default function UseCases() {
                 <div className="grid lg:grid-cols-2 gap-8">
                   {/* Features */}
                   <div>
-                    <h4 className="text-[13px] font-semibold text-white mb-4 uppercase tracking-wider">Capabilities</h4>
+                    <h4 className="caption mb-4 uppercase tracking-wider" style={{ color: 'var(--text-primary)' }}>Capabilities</h4>
                     <ul className="space-y-2.5">
                       {active.features.map((feature, i) => (
                         <motion.li
                           key={feature}
-                          initial={{ opacity: 0, x: -10 }}
+                          initial={{ opacity: 0, x: -8 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: 0.2 + i * 0.04 }}
                           className="flex items-start gap-2.5"
                         >
                           <div className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{ background: active.color }} />
-                          <span className="text-[13px] text-gray-400">{feature}</span>
+                          <span className="caption" style={{ color: 'var(--text-secondary)' }}>{feature}</span>
                         </motion.li>
                       ))}
                     </ul>
                   </div>
 
                   {/* Demo */}
-                  <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-5">
+                  <div className="rounded-xl p-5" style={{ background: 'var(--input-bg)', border: '1px solid var(--border-subtle)' }}>
                     <div className="flex items-center gap-2 mb-4">
-                      <MessageSquare className="w-3.5 h-3.5 text-gray-500" />
-                      <span className="text-[11px] text-gray-500 uppercase tracking-wider font-medium">Live Demo</span>
+                      <MessageSquare className="w-3.5 h-3.5" style={{ color: 'var(--text-tertiary)' }} />
+                      <span className="overline" style={{ color: 'var(--text-tertiary)' }}>Live Demo</span>
                     </div>
 
                     <div className="space-y-3">
                       <div className="flex gap-2.5">
-                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#FF6B35] to-[#FF8F6B] flex items-center justify-center flex-shrink-0">
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'var(--accent)' }}>
                           <Mic className="w-3.5 h-3.5 text-white" />
                         </div>
-                        <div className="px-3 py-2.5 rounded-xl rounded-tl-md bg-[#FF6B35]/10 text-[12px] text-white leading-relaxed">
+                        <div className="px-3 py-2.5 rounded-xl rounded-tl-md text-[12px] leading-relaxed" style={{ background: 'var(--primary-ring)', color: 'var(--text-primary)' }}>
                           {active.demo.user}
                         </div>
                       </div>
 
                       <div className="flex gap-2.5">
-                        <div className={`w-7 h-7 rounded-lg bg-gradient-to-br ${active.gradient} flex items-center justify-center flex-shrink-0`}>
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: active.color }}>
                           <BarChart3 className="w-3.5 h-3.5 text-white" />
                         </div>
-                        <div className="px-3 py-2.5 rounded-xl rounded-tl-md bg-white/[0.04] text-[12px] text-gray-300 leading-relaxed">
+                        <div className="px-3 py-2.5 rounded-xl rounded-tl-md text-[12px] leading-relaxed" style={{ background: 'var(--card-bg)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>
                           {active.demo.agent}
                         </div>
                       </div>

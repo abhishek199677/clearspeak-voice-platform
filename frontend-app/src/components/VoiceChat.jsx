@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  Mic, MicOff, Phone, PhoneOff, Volume2, Radio, Wifi, 
-  Languages, ArrowRightLeft, Bot, MessageSquare, Settings,
+  Mic, MicOff, PhoneOff, Volume2, Radio, Wifi, 
+  Languages, ArrowRightLeft, Bot, Settings,
   Globe, ChevronDown
 } from 'lucide-react'
-import { createSession, closeSession, healthCheck, getIndicLanguages } from '../api/platform'
+import { createSession, closeSession, healthCheck } from '../api/platform'
 
 const INDIA_LANGUAGES = [
   { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी' },

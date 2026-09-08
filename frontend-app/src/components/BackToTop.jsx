@@ -1,4 +1,4 @@
-import { motion, useScroll, useTransform } from 'framer-motion'
+import { motion, useScroll } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import { ArrowUp } from 'lucide-react'
 
@@ -24,9 +24,10 @@ export default function BackToTop() {
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.9 }}
       onClick={scrollToTop}
-      className="fixed bottom-8 right-8 w-14 h-14 bg-gradient-to-r from-[#6C3CE1] to-[#FF6B35] rounded-full flex items-center justify-center shadow-xl shadow-purple-500/30 z-40"
+      className="fixed bottom-8 right-8 w-12 h-12 rounded-full flex items-center justify-center z-40"
+      style={{ background: 'var(--primary)', color: 'white' }}
     >
-      <ArrowUp className="w-6 h-6 text-white" />
+      <ArrowUp className="w-5 h-5" />
     </motion.button>
   )
 }

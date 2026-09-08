@@ -608,6 +608,51 @@ async def get_call_history(limit: int = 50):
     return {"history": history}
 
 
+@app.post("/channels/{channel_id}/summary")
+async def summarize_channel(channel_id: str):
+    """Generate an AI summary of recent channel messages."""
+    messages = await app.state.chat_manager.get_messages(channel_id, limit=100)
+    if not messages:
+        return {"summary": "No messages in this channel yet."}
+
+    conversation = "\n".join(
+        f"{m.sender_name}: {m.content}" for m in messages[-50:]
+    )
+
+    try:
+        llm = app.state.pipeline.llm
+        response = await llm.generate_response(
+            [{"role": "system", "content": "Summarize this conversation concisely in 2-4 bullet points. Focus on key decisions, action items, and topics discussed."},
+             {"role": "user", "content": conversation}]
+        )
+        return {"summary": response}
+    except Exception:
+        lines = conversation.split("\n")
+        preview = lines[:5] if len(lines) > 5 else lines
+        return {"summary": "• " + "\n• ".join(l.strip() for l in preview if l.strip())}
+
+
+@app.post("/calls/{call_id}/summary")
+async def summarize_call(call_id: str):
+    """Generate an AI summary of a voice call."""
+    call = await app.state.call_manager.get_call(call_id)
+    if not call:
+        raise HTTPException(status_code=404, detail="Call not found")
+
+    call_data = call.to_dict()
+    info = f"Call type: {call_data.get('call_type', 'unknown')}, participants: {call_data.get('participants', [])}, duration: {call_data.get('duration_seconds', 0)}s"
+
+    try:
+        llm = app.state.pipeline.llm
+        response = await llm.generate_response(
+            [{"role": "system", "content": "Summarize this voice call details concisely in 2-3 bullet points."},
+             {"role": "user", "content": info}]
+        )
+        return {"summary": response}
+    except Exception:
+        return {"summary": f"Call {call_id} — Type: {call_data.get('call_type', 'N/A')}, Duration: {call_data.get('duration_seconds', 0)} seconds"}
+
+
 # Translation Endpoints
 
 @app.post("/translate")
@@ -1043,6 +1088,201 @@ async def get_voices():
     
     voices = await app.state.pipeline.tts.get_voices()
     return {"voices": voices, "provider": settings.tts_provider}
+
+
+# ─── Productivity Endpoints ───
+
+from collections import defaultdict
+import time as _time
+
+_productivity_store = defaultdict(lambda: {"todos": [], "reminders": [], "notes": []})
+
+
+@app.get("/productivity/{user_id}")
+async def get_productivity(user_id: str):
+    """Get all productivity data for a user."""
+    return _productivity_store[user_id]
+
+
+@app.post("/productivity/{user_id}/todos")
+async def add_todo(user_id: str, title: str, description: str = "", priority: str = "medium", due_date: str = None):
+    """Add a new to-do item."""
+    todo = {
+        "id": f"todo-{int(_time.time()*1000)}",
+        "title": title,
+        "description": description,
+        "priority": priority,
+        "completed": False,
+        "due_date": due_date,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    _productivity_store[user_id]["todos"].append(todo)
+    return todo
+
+
+@app.put("/productivity/{user_id}/todos/{todo_id}")
+async def update_todo(user_id: str, todo_id: str, completed: bool = None, title: str = None):
+    """Update a to-do item."""
+    todos = _productivity_store[user_id]["todos"]
+    for todo in todos:
+        if todo["id"] == todo_id:
+            if completed is not None:
+                todo["completed"] = completed
+            if title is not None:
+                todo["title"] = title
+            return todo
+    raise HTTPException(status_code=404, detail="Todo not found")
+
+
+@app.delete("/productivity/{user_id}/todos/{todo_id}")
+async def delete_todo(user_id: str, todo_id: str):
+    """Delete a to-do item."""
+    todos = _productivity_store[user_id]["todos"]
+    _productivity_store[user_id]["todos"] = [t for t in todos if t["id"] != todo_id]
+    return {"status": "deleted"}
+
+
+@app.post("/productivity/{user_id}/reminders")
+async def add_reminder(user_id: str, title: str, remind_at: str, description: str = ""):
+    """Add a reminder."""
+    reminder = {
+        "id": f"rem-{int(_time.time()*1000)}",
+        "title": title,
+        "description": description,
+        "remind_at": remind_at,
+        "completed": False,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    _productivity_store[user_id]["reminders"].append(reminder)
+    return reminder
+
+
+@app.put("/productivity/{user_id}/reminders/{reminder_id}")
+async def update_reminder(user_id: str, reminder_id: str, completed: bool = None):
+    """Update a reminder."""
+    reminders = _productivity_store[user_id]["reminders"]
+    for rem in reminders:
+        if rem["id"] == reminder_id:
+            if completed is not None:
+                rem["completed"] = completed
+            return rem
+    raise HTTPException(status_code=404, detail="Reminder not found")
+
+
+@app.delete("/productivity/{user_id}/reminders/{reminder_id}")
+async def delete_reminder(user_id: str, reminder_id: str):
+    """Delete a reminder."""
+    reminders = _productivity_store[user_id]["reminders"]
+    _productivity_store[user_id]["reminders"] = [r for r in reminders if r["id"] != reminder_id]
+    return {"status": "deleted"}
+
+
+@app.post("/productivity/{user_id}/notes")
+async def add_note(user_id: str, title: str, content: str):
+    """Add a note."""
+    note = {
+        "id": f"note-{int(_time.time()*1000)}",
+        "title": title,
+        "content": content,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    _productivity_store[user_id]["notes"].append(note)
+    return note
+
+
+@app.put("/productivity/{user_id}/notes/{note_id}")
+async def update_note(user_id: str, note_id: str, content: str = None, title: str = None):
+    """Update a note."""
+    notes = _productivity_store[user_id]["notes"]
+    for note in notes:
+        if note["id"] == note_id:
+            if content is not None:
+                note["content"] = content
+            if title is not None:
+                note["title"] = title
+            return note
+    raise HTTPException(status_code=404, detail="Note not found")
+
+
+@app.delete("/productivity/{user_id}/notes/{note_id}")
+async def delete_note(user_id: str, note_id: str):
+    """Delete a note."""
+    notes = _productivity_store[user_id]["notes"]
+    _productivity_store[user_id]["notes"] = [n for n in notes if n["id"] != note_id]
+    return {"status": "deleted"}
+
+
+@app.post("/productivity/ai-chat")
+async def productivity_ai_chat(message: str, user_id: str = "default"):
+    """AI-powered productivity assistant chat."""
+    try:
+        llm = app.state.pipeline.llm
+        productivity_data = _productivity_store.get(user_id, {})
+        context = f"User's todos: {len(productivity_data.get('todos', []))} items, reminders: {len(productivity_data.get('reminders', []))}, notes: {len(productivity_data.get('notes', []))}"
+
+        response = await llm.generate_response(
+            [{"role": "system", "content": f"You are a productivity assistant. Help users manage tasks, reminders, and notes. Be concise. {context}"},
+             {"role": "user", "content": message}]
+        )
+        return {"response": response}
+    except Exception:
+        return {"response": "I can help you manage your tasks, reminders, and notes. Try asking me to create a to-do, set a reminder, or take a note!"}
+
+
+@app.get("/weather")
+async def get_weather(city: str = "Delhi"):
+    """Get weather and AQI for a city (mock data)."""
+    return {
+        "city": city,
+        "temperature_c": 32,
+        "feels_like_c": 38,
+        "humidity": 65,
+        "wind_kph": 12,
+        "condition": "Partly Cloudy",
+        "aqi": 156,
+        "aqi_level": "Unhealthy",
+        "forecast": [
+            {"day": "Today", "high": 34, "low": 26, "condition": "Partly Cloudy"},
+            {"day": "Tomorrow", "high": 36, "low": 27, "condition": "Sunny"},
+            {"day": "Day After", "high": 33, "low": 25, "condition": "Thunderstorms"},
+        ]
+    }
+
+
+@app.get("/cricket")
+async def get_cricket_scores():
+    """Get live cricket scores (mock data)."""
+    return {
+        "matches": [
+            {
+                "id": "match-1",
+                "teams": "IND vs AUS",
+                "format": "T20I",
+                "status": "Live",
+                "score": "India 156/4 (16.2 ov)",
+                "venue": "Wankhede Stadium, Mumbai",
+                "req_rate": "8.2",
+            },
+            {
+                "id": "match-2",
+                "teams": "ENG vs SA",
+                "format": "Test",
+                "status": "Day 3 - Stumps",
+                "score": "England 325/8 & 89/2 | South Africa 287/10",
+                "venue": "Lord's, London",
+                "req_rate": None,
+            },
+            {
+                "id": "match-3",
+                "teams": "IND vs BAN",
+                "format": "ODI",
+                "status": "Upcoming",
+                "score": "Match starts at 14:00 IST",
+                "venue": "Eden Gardens, Kolkata",
+                "req_rate": None,
+            },
+        ]
+    }
 
 
 # WebSocket endpoint
