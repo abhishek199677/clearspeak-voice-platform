@@ -1,106 +1,177 @@
-import { motion, useInView, AnimatePresence } from 'framer-motion'
-import { useRef, useState } from 'react'
-import { Plus, Minus } from 'lucide-react'
+import { useState } from 'react'
+import { Sparkles, Cpu, Sliders, Volume2, ShieldCheck, Globe } from 'lucide-react'
+import {
+  Accordion,
+  AccordionItem,
+  AccordionStreamingContent,
+  AccordionTrigger,
+} from '@/components/ui/accordion-generative-utils/accordion'
 
-const faqs = [
+const clearspeakAnswers = [
   {
+    value: 'languages',
     question: 'What languages does ClearSpeak support?',
-    answer: 'ClearSpeak supports 200+ languages including English, Spanish, French, German, Chinese, Japanese, Korean, Arabic, Hindi, and many more. Our AI models understand both romanized text and native scripts, preserving meaning and cultural context.',
+    icon: Globe,
+    answer:
+      'ClearSpeak supports all 22 Scheduled Languages of India (Hindi, Tamil, Telugu, Bengali, Kannada, Marathi, Gujarati, etc.) plus 200+ global languages. Our multilingual transformer models process both native Unicode scripts and romanized phonetic inputs with cultural sentiment preservation.',
   },
   {
-    question: 'How does the voice cloning work?',
-    answer: 'Our voice cloning uses advanced deep learning to analyze 30 seconds of audio, capturing your unique vocal characteristics, accent, and speaking style. The cloned voice can then speak any text in 200+ languages.',
+    value: 'latency',
+    question: 'What is the end-to-end latency for voice translation?',
+    icon: Volume2,
+    answer:
+      'End-to-end voice-to-voice translation averages sub-300ms. By streaming PCM audio chunks through WebSocket pipelines directly into edge-accelerated Whisper and neural synthesis models, conversations maintain natural, human conversational cadence.',
   },
   {
-    question: 'Is there a free plan?',
-    answer: 'Yes! The Starter plan is free forever with 1,000 messages/month, 5 languages, and basic analytics. You can upgrade anytime.',
+    value: 'cloning',
+    question: 'How does instantaneous voice cloning work?',
+    icon: Sparkles,
+    answer:
+      'Send 30 seconds of clean reference audio. Our deep neural acoustic encoders isolate fundamental timbre, pitch range, and cadence style tokens, enabling the cloned persona to converse dynamically across 200+ languages with synchronized lip-sync metadata.',
   },
   {
-    question: 'How secure is my data?',
-    answer: 'All data is encrypted end-to-end (E2EE). We are SOC 2 Type II and GDPR compliant. Your data is never used to train models without consent.',
+    value: 'security',
+    question: 'How is enterprise voice and transcript data protected?',
+    icon: ShieldCheck,
+    answer:
+      'ClearSpeak operates under a strict Zero Data Retention (ZDR) policy. Audio packets and transcripts are processed ephemerally in RAM and never stored or retained for model training. Architected for SOC 2 Type II, ISO 27001, EU GDPR, and India DPDP Act 2023 compliance with TLS 1.3 in-flight and AES-256 at rest.',
   },
   {
-    question: 'Can I integrate with existing tools?',
-    answer: 'Absolutely! We offer REST API and webhooks for Slack, HubSpot, Salesforce, Zendesk, and more. SDKs available for Python, JavaScript, and Swift.',
-  },
-  {
-    question: 'What is the latency for voice translation?',
-    answer: 'Average latency is under 100ms for voice translation using edge computing and optimized ML models.',
+    value: 'integration',
+    question: 'Can ClearSpeak integrate with our enterprise contact center?',
+    icon: Cpu,
+    answer:
+      'Yes. ClearSpeak provides drop-in SIP/WebRTC trunking, REST APIs, WebSocket streaming endpoints, and pre-built connectors for Genesys, Twilio, Zendesk, Salesforce, and HubSpot. Native SDKs are provided for Python, JavaScript, and iOS/Android.',
   },
 ]
 
-function FaqItem({ faq, isOpen, toggle }) {
-  return (
-    <div className="accordion-item">
-      <button
-        onClick={toggle}
-        className="accordion-trigger"
-      >
-        <span style={{ color: isOpen ? 'var(--primary)' : 'var(--text-primary)' }}>{faq.question}</span>
-        <motion.div
-          animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.3 }}
-          className="flex-shrink-0"
-        >
-          {isOpen ? (
-            <Minus className="w-4 h-4" style={{ color: 'var(--primary)' }} />
-          ) : (
-            <Plus className="w-4 h-4" style={{ color: 'var(--text-tertiary)' }} />
-          )}
-        </motion.div>
-      </button>
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="overflow-hidden"
-          >
-            <p className="body pb-5" style={{ color: 'var(--text-secondary)' }}>{faq.answer}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  )
-}
+const generativeAnswers = [
+  {
+    value: 'what',
+    question: 'What does this component do?',
+    answer:
+      'It streams the answer in one character at a time, the way a model writes it. The panel opens to the height of the finished text first, so nothing below it jumps while the words arrive.',
+  },
+  {
+    value: 'how',
+    question: 'How is the effect built?',
+    answer:
+      'A timer reveals a growing slice of the string while a caret trails the last character. The full text sits underneath at zero visibility to reserve the space, and it is the copy a screen reader reads.',
+  },
+  {
+    value: 'speed',
+    question: 'Can I change the pace?',
+    answer:
+      'Yes. Set speed for milliseconds per character and startDelay for the pause before the first word. Punctuation adds a beat on its own, and a reduced-motion preference skips straight to the finished answer.',
+  },
+]
 
 export default function FAQ() {
-  const ref = useRef(null)
-  const isInView = useInView(ref, { once: true, margin: '-50px' })
-  const [openIndex, setOpenIndex] = useState(0)
+  const [activeTab, setActiveTab] = useState('clearspeak')
+  const [speed, setSpeed] = useState(12)
+
+  const currentList = activeTab === 'clearspeak' ? clearspeakAnswers : generativeAnswers
 
   return (
-    <section className="section-lg" style={{ background: 'var(--bg)' }}>
-      <div ref={ref} className="max-w-3xl mx-auto px-5 sm:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-14"
-        >
-          <div className="overline-dot justify-center mb-4" style={{ color: 'var(--success)' }}>
-            <span style={{ color: 'var(--success)' }}>FAQ</span>
-          </div>
-          <h2 className="heading-1" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-            Frequently Asked{' '}
-            <span style={{ color: 'var(--primary)' }}>Questions</span>
-          </h2>
-        </motion.div>
+    <section className="relative py-24 sm:py-32 overflow-hidden bg-[#0A0A0F]">
+      {/* Background glow accents */}
+      <div className="absolute top-[20%] left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-violet-600/10 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-[10%] right-[10%] w-[400px] h-[400px] bg-[#FF6B35]/5 rounded-full blur-[130px] pointer-events-none" />
 
-        <div className="rounded-2xl p-8" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
-          {faqs.map((faq, i) => (
-            <FaqItem
-              key={i}
-              faq={faq}
-              index={i}
-              isOpen={openIndex === i}
-              toggle={() => setOpenIndex(openIndex === i ? -1 : i)}
-            />
-          ))}
+      <div className="relative z-10 max-w-4xl mx-auto px-5 sm:px-8">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-[11px] font-semibold tracking-wider uppercase mb-4">
+            <Sparkles className="w-3.5 h-3.5" />
+            Generative Intelligence FAQ
+          </div>
+          <h2 className="text-[2.25rem] sm:text-[3rem] font-bold text-white tracking-tight">
+            Frequently Asked{' '}
+            <span className="bg-gradient-to-r from-violet-400 via-[#9B6DFF] to-[#FF6B35] bg-clip-text text-transparent">
+              Questions
+            </span>
+          </h2>
+          <p className="mt-3 text-neutral-400 text-sm sm:text-base max-w-xl mx-auto">
+            Experience real-time AI streaming disclosure. Responses generate dynamically with full layout stability and zero layout shift.
+          </p>
         </div>
+
+        {/* Tab & Speed Controls */}
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-8 bg-[#0E0E15]/90 border border-white/[0.08] p-3 rounded-2xl">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveTab('clearspeak')}
+              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all ${
+                activeTab === 'clearspeak'
+                  ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/30'
+                  : 'text-neutral-400 hover:text-white hover:bg-white/[0.04]'
+              }`}
+            >
+              ClearSpeak Enterprise AI
+            </button>
+            <button
+              onClick={() => setActiveTab('generative')}
+              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all ${
+                activeTab === 'generative'
+                  ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/30'
+                  : 'text-neutral-400 hover:text-white hover:bg-white/[0.04]'
+              }`}
+            >
+              Component Architecture
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3 px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.05]">
+            <Sliders className="w-3.5 h-3.5 text-neutral-400" />
+            <span className="text-xs text-neutral-400">Pace:</span>
+            <div className="flex items-center gap-1.5">
+              {[8, 12, 20].map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setSpeed(s)}
+                  className={`px-2 py-0.5 rounded text-[11px] font-mono transition-colors ${
+                    speed === s
+                      ? 'bg-violet-500/20 text-violet-300 font-bold border border-violet-500/30'
+                      : 'text-neutral-500 hover:text-neutral-300'
+                  }`}
+                >
+                  {s === 8 ? 'Fast' : s === 12 ? 'Normal' : 'Slow'}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Generative Accordion */}
+        <Accordion
+          key={`${activeTab}-${speed}`}
+          type="single"
+          collapsible
+          variant="card"
+          defaultValue={currentList[0]?.value}
+          className="w-full space-y-3"
+        >
+          {currentList.map((item) => (
+            <AccordionItem key={item.value} value={item.value}>
+              <AccordionTrigger>
+                <span className="flex items-center gap-3">
+                  <Sparkles
+                    aria-hidden="true"
+                    className="size-4 shrink-0 text-violet-500 dark:text-violet-400"
+                    strokeWidth={2}
+                  />
+                  <span className="text-left font-medium text-white/90 group-hover:text-white transition-colors">
+                    {item.question}
+                  </span>
+                </span>
+              </AccordionTrigger>
+              <AccordionStreamingContent text={item.answer} speed={speed} />
+            </AccordionItem>
+          ))}
+        </Accordion>
       </div>
     </section>
   )
 }
+
+export { AccordionGenerativeDemo } from './AccordionGenerativeDemo'

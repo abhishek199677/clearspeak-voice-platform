@@ -1,144 +1,185 @@
-import { useState } from 'react'
-import { Routes, Route } from 'react-router-dom'
-import { useTheme } from './ThemeContext'
-import Navbar from './components/Navbar'
-import Hero from './components/Hero'
-import HowItWorks from './components/HowItWorks'
-import UseCases from './components/UseCases'
-import RotatingFeatures from './components/RotatingFeatures'
-import DeployAgent from './components/DeployAgent'
-import AIConversations from './components/AIConversations'
-import LanguageSupport from './components/LanguageSupport'
-import VoiceClone from './components/VoiceClone'
-import Features from './components/Features'
-import VoiceChat from './components/VoiceChat'
-import Dashboard from './components/Dashboard'
-import LanguageMarquee from './components/LanguageMarquee'
-import Partners from './components/Partners'
-import Pricing from './components/Pricing'
-import FAQ from './components/FAQ'
-import Footer from './components/Footer'
+import { useEffect, useState } from 'react'
+
 import ScrollProgress from './components/ScrollProgress'
 import BackToTop from './components/BackToTop'
-import AdminLogin from './components/AdminLogin'
-import Monitor from './components/Monitor'
-import ChannelBrowser from './components/ChannelBrowser'
-import ChatRoom from './components/ChatRoom'
-import OnlineUsers from './components/OnlineUsers'
-import VoiceCallUI from './components/VoiceCallUI'
-import AgentManager from './components/AgentManager'
-import StreamManager from './components/StreamManager'
-import ProductivityDashboard from './components/ProductivityDashboard'
+import Navbar from './components/Navbar'
+import Footer from './components/Footer'
+import AudioGuidance from './components/AudioGuidance'
 
-function LandingPage() {
-  return (
+import LanguageSupport from './components/LanguageSupport'
+import Features from './components/Features'
+import LanguageMarquee from './components/LanguageMarquee'
+
+import VoiceClone from './components/VoiceClone'
+import SpeechShowcase from './components/SpeechShowcase'
+import VoiceChat from './components/VoiceChat'
+
+import ChatInterface from './components/ChatInterface'
+import CallsInterface from './components/CallsInterface'
+import LiveStreams from './components/LiveStreams'
+import SignLanguage from './components/SignLanguage'
+import ToDoZeeAI from './components/ToDoZeeAI'
+import Dashboard from './components/Dashboard'
+import BusinessAnalytics from './components/BusinessAnalytics'
+import Pricing from './components/Pricing'
+
+import DashboardOverview from './components/dashboard/Overview'
+import PricingTable from './components/pricing/PricingTable'
+import WorkflowBuilder from './components/agent-builder/WorkflowBuilder'
+import DeployAgent from './components/DeployAgent'
+import AIConversations from './components/AIConversations'
+import EnterpriseSecurity from './components/EnterpriseSecurity'
+import FAQ from './components/FAQ'
+import AccordionGenerativeDemo from './components/AccordionGenerativeDemo'
+import StudioPage from './components/studio/StudioPage'
+
+
+const Div = () => <div className="section-divider" />
+
+const pages = {
+  '/': <StudioPage />,
+  '/features': (
     <>
+      <Features />
+      <Div />
+      <LanguageSupport />
+      <Div />
+      <LanguageMarquee />
+    </>
+  ),
+  // 01 Speech-to-Speech
+  '/speech': (
+    <>
+      <SpeechShowcase />
+      <Div />
+      <VoiceChat />
+    </>
+  ),
+  '/speech-to-speech': (
+    <>
+      <SpeechShowcase />
+      <Div />
+      <VoiceChat />
+    </>
+  ),
+  // 02 Voice Cloning
+  '/clone': <VoiceClone />,
+  '/voice-clone': <VoiceClone />,
+  '/voice': (
+    <>
+      <VoiceClone />
+      <Div />
+      <SpeechShowcase />
+      <Div />
+      <VoiceChat />
+    </>
+  ),
+  // 03 AI Voice Agents
+  '/agents': (
+    <>
+      <CallsInterface />
+      <Div />
+      <DeployAgent />
+      <Div />
+      <AIConversations />
+    </>
+  ),
+  '/calls': (
+    <>
+      <CallsInterface />
+      <Div />
+      <DeployAgent />
+      <Div />
+      <AIConversations />
+    </>
+  ),
+  // 04 Realtime Chat
+  '/chat': <ChatInterface />,
+  // 05 Live Streaming
+  '/live': (
+    <>
+      <LiveStreams />
+      <Div />
+      <SignLanguage />
+    </>
+  ),
+  '/streaming': (
+    <>
+      <LiveStreams />
+      <Div />
+      <SignLanguage />
+    </>
+  ),
+  // 06 Analytics
+  '/analytics': (
+    <>
+      <Dashboard />
+      <Div />
+      <BusinessAnalytics />
+    </>
+  ),
+  '/dashboard': (
+    <>
+      <Dashboard />
+      <Div />
+      <BusinessAnalytics />
+    </>
+  ),
+  '/tasks': <ToDoZeeAI />,
+  '/pricing': <Pricing />,
+  '/security': <EnterpriseSecurity />,
+  '/compliance': <EnterpriseSecurity />,
+  '/faq': <FAQ />,
+  '/faq-demo': (
+    <div className="pt-24 pb-20">
+      <AccordionGenerativeDemo />
+    </div>
+  ),
+  '/enterprise': (
+    <>
+      <EnterpriseSecurity />
+      <Div />
+      <DashboardOverview />
+      <Div />
+      <PricingTable />
+      <Div />
+      <WorkflowBuilder />
+    </>
+  ),
+}
+
+// ponytail: hash routing, no react-router — swap for react-router when you need
+// nested routes, loaders or history-based URLs.
+function readRoute() {
+  const hash = window.location.hash
+  if (!hash.startsWith('#/')) return '/'
+  const path = hash.slice(1).split('#')[0].split('?')[0].replace(/\/+$/, '') || '/'
+  return path
+}
+
+export default function App() {
+  const [route, setRoute] = useState(readRoute)
+
+  useEffect(() => {
+    const onHash = () => {
+      setRoute(readRoute())
+    }
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [route])
+
+  return (
+    <div className="min-h-screen bg-[#0A0A0F]">
       <ScrollProgress />
       <Navbar />
-      <Hero />
-      <Partners />
-      <HowItWorks />
-      <UseCases />
-      <RotatingFeatures />
-      <DeployAgent />
-      <AIConversations />
-      <LanguageSupport />
-      <VoiceClone />
-      <Features />
-      <VoiceChat />
-      <Dashboard />
-      <LanguageMarquee />
-      <Pricing />
-      <FAQ />
+      <main>{pages[route] ?? pages['/']}</main>
       <Footer />
       <BackToTop />
-    </>
-  )
-}
-
-function ChatPage() {
-  const [activeChannel, setActiveChannel] = useState(null)
-  const userId = useState(() => 'user_' + Math.random().toString(36).slice(2, 8))[0]
-
-  return (
-    <div className="chat-page">
-      <Navbar />
-      <div className="chat-layout">
-        <aside className="chat-sidebar chat-sidebar--left">
-          <ChannelBrowser activeChannel={activeChannel} onSelect={setActiveChannel} />
-        </aside>
-        <main className="chat-main">
-          <ChatRoom channel={activeChannel} userId={userId} />
-        </main>
-        <aside className="chat-sidebar chat-sidebar--right">
-          <OnlineUsers />
-        </aside>
-      </div>
+      <AudioGuidance />
     </div>
   )
 }
-
-function CallsPage() {
-  return (
-    <div className="page-container">
-      <Navbar />
-      <main className="page-content">
-        <VoiceCallUI />
-      </main>
-    </div>
-  )
-}
-
-function AgentsPage() {
-  return (
-    <div className="page-container">
-      <Navbar />
-      <main className="page-content">
-        <AgentManager />
-      </main>
-    </div>
-  )
-}
-
-function StreamsPage() {
-  return (
-    <div className="page-container">
-      <Navbar />
-      <main className="page-content">
-        <StreamManager />
-      </main>
-    </div>
-  )
-}
-
-function ProductivityPage() {
-  return (
-    <div className="page-container">
-      <Navbar />
-      <main className="page-content">
-        <ProductivityDashboard />
-      </main>
-    </div>
-  )
-}
-
-function App() {
-  const { theme } = useTheme()
-
-  return (
-    <div className={`min-h-screen transition-theme ${theme}`} style={{ background: 'var(--bg)', color: 'var(--text-primary)' }}>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/chat" element={<ChatPage />} />
-        <Route path="/calls" element={<CallsPage />} />
-        <Route path="/agents" element={<AgentsPage />} />
-        <Route path="/streams" element={<StreamsPage />} />
-        <Route path="/productivity" element={<ProductivityPage />} />
-        <Route path="/admin" element={<AdminLogin />} />
-        <Route path="/admin/dashboard" element={<Monitor />} />
-      </Routes>
-    </div>
-  )
-}
-
-export default App

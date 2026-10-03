@@ -10,10 +10,11 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies including ffmpeg for whisper audio processing
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
+    ffmpeg \
     libsndfile1 \
     pkg-config \
     libavformat-dev \
@@ -27,6 +28,12 @@ RUN apt-get update && apt-get install -y \
 
 # Install CPU-only PyTorch first to avoid downloading CUDA packages (~1.5GB)
 RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+
+# Pre-install packaging tools with setuptools<70 for openai-whisper
+RUN pip install --no-cache-dir --upgrade pip "setuptools<70" wheel
+
+# Pre-install openai-whisper with --no-build-isolation to use setuptools<70 (pkg_resources)
+RUN pip install --no-cache-dir --no-build-isolation openai-whisper==20231117
 
 # Copy requirements first for caching
 COPY requirements.txt .

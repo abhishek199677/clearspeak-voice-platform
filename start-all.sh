@@ -1,26 +1,68 @@
 #!/bin/bash
-echo "=== Starting Voice AI Platform ==="
+# ==============================================================================
+# ClearSpeak AI Voice Platform - Enterprise Production & Dev Launcher
+# ==============================================================================
+set -e
 
-mkdir -p /tmp/voice-ai-logs
+PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
+LOG_DIR="/tmp/clearspeak-logs"
+mkdir -p "$LOG_DIR"
 
-# Start Voicebox
-echo "[1/3] Starting Voicebox..."
-cd /Users/mac/Desktop/voice/tools/voicebox
-source .venv/bin/activate
-nohup python -m uvicorn backend.app:app --host 127.0.0.1 --port 17493 > /tmp/voice-ai-logs/voicebox.log 2>&1 &
-echo $! > /tmp/voice-ai-logs/voicebox.pid
-sleep 2
+echo "=========================================================="
+echo " Starting ClearSpeak Enterprise Voice AI Platform"
+echo " Location: $PROJECT_DIR"
+echo "=========================================================="
 
-# Start Frontend
-echo "[2/3] Starting Frontend..."
-cd /Users/mac/Desktop/voice/frontend-app
-nohup npm run dev > /tmp/voice-ai-logs/frontend.log 2>&1 &
-echo $! > /tmp/voice-ai-logs/frontend.pid
-sleep 2
+# 1. Start Backend Server
+echo "[1/2] Launching Enterprise Backend (FastAPI + WebSocket + ASR/TTS/LLM)..."
+cd "$PROJECT_DIR"
+
+if [ -f "$PROJECT_DIR/.venv/bin/python" ]; then
+    PYTHON_BIN="$PROJECT_DIR/.venv/bin/python"
+else
+    PYTHON_BIN="python3"
+fi
+
+nohup "$PYTHON_BIN" -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 > "$LOG_DIR/backend.log" 2>&1 &
+BACKEND_PID=$!
+echo "$BACKEND_PID" > "$LOG_DIR/backend.pid"
+
+# Wait for backend to be ready
+echo "      Waiting for backend health check..."
+for i in {1..15}; do
+    if curl -s http://127.0.0.1:8000/health > /dev/null 2>&1; then
+        echo "      ✓ Backend running on http://127.0.0.1:8000 (PID: $BACKEND_PID)"
+        break
+    fi
+    sleep 1
+done
+
+# 2. Start Frontend App
+echo "[2/2] Launching Frontend Interface..."
+cd "$PROJECT_DIR/frontend-app"
+
+# Check if already running on 3001 or 3000
+if lsof -iTCP:3001 -sTCP:LISTEN > /dev/null 2>&1; then
+    echo "      ✓ Frontend is already running on port 3001"
+elif lsof -iTCP:3000 -sTCP:LISTEN > /dev/null 2>&1; then
+    echo "      ✓ Frontend is already running on port 3000"
+else
+    nohup npm run dev > "$LOG_DIR/frontend.log" 2>&1 &
+    FRONTEND_PID=$!
+    echo "$FRONTEND_PID" > "$LOG_DIR/frontend.pid"
+    sleep 2
+    echo "      ✓ Frontend launched (PID: $FRONTEND_PID)"
+fi
 
 echo ""
-echo "=== Services Running ==="
-echo "  Frontend:      http://localhost:3000"
-echo "  Voicebox:      http://127.0.0.1:17493"
-echo ""
-echo "To stop: kill \$(cat /tmp/voice-ai-logs/*.pid)"
+echo "=========================================================="
+echo " ClearSpeak Enterprise Platform is LIVE"
+echo "=========================================================="
+echo "  Frontend Application: http://localhost:3001 (or :3000)"
+echo "  Backend API Server:   http://localhost:8000"
+echo "  API Documentation:    http://localhost:8000/api/docs"
+echo "  Health & Metrics:     http://localhost:8000/health"
+echo "  Prometheus Metrics:   http://localhost:8000/metrics"
+echo "  Log Directory:        $LOG_DIR"
+echo "=========================================================="
+echo "To stop: kill \$(cat $LOG_DIR/*.pid 2>/dev/null)"

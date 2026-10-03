@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  Mic, MicOff, PhoneOff, Volume2, Radio, Wifi, 
-  Languages, ArrowRightLeft, Bot, Settings,
+  Mic, MicOff, Phone, PhoneOff, Volume2, Radio, Wifi, 
+  Languages, ArrowRightLeft, Bot, MessageSquare, Settings,
   Globe, ChevronDown
 } from 'lucide-react'
-import { createSession, closeSession, healthCheck } from '../api/platform'
+import { createSession, closeSession, healthCheck, getIndicLanguages, getWsBaseUrl } from '../api/platform'
 
 const INDIA_LANGUAGES = [
   { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी' },
@@ -218,8 +218,8 @@ export default function VoiceChat() {
   
   // Mode and language settings
   const [pipelineMode, setPipelineMode] = useState('translation') // 'agent' or 'translation'
-  const [sourceLanguage, setSourceLanguage] = useState('en')
-  const [targetLanguage, setTargetLanguage] = useState('te')
+  const [sourceLanguage, setSourceLanguage] = useState('hi')
+  const [targetLanguage, setTargetLanguage] = useState('ta')
   const [translationEnabled, setTranslationEnabled] = useState(false)
   const [showLanguageModal, setShowLanguageModal] = useState(false)
   const [languagesConfirmed, setLanguagesConfirmed] = useState(false)
@@ -259,7 +259,8 @@ export default function VoiceChat() {
       const newUserId = `user-${Math.random().toString(36).substr(2, 9)}`
       setUserId(newUserId)
       
-      const ws = new WebSocket(`ws://127.0.0.1:8000/ws/${sess.session_id}?user_id=${newUserId}`)
+      const wsBase = getWsBaseUrl()
+      const ws = new WebSocket(`${wsBase}/ws/${sess.session_id}?user_id=${newUserId}`)
       wsRef.current = ws
 
       ws.onopen = () => {
