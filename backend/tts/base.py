@@ -292,6 +292,42 @@ class EdgeTTS(TTSProvider):
     - Multiple languages and voices
     - Completely free, no rate limits
     """
+
+    # Default voice per language (verified against edge-tts voice list)
+    LANGUAGE_VOICES = {
+        "en": "en-US-AvaNeural",
+        "hi": "hi-IN-SwaraNeural",
+        "bn": "bn-IN-TanishaaNeural",
+        "ta": "ta-IN-PallaviNeural",
+        "te": "te-IN-ShrutiNeural",
+        "ml": "ml-IN-SobhanaNeural",
+        "kn": "kn-IN-SapnaNeural",
+        "gu": "gu-IN-DhwaniNeural",
+        "mr": "mr-IN-AarohiNeural",
+        "ur": "ur-IN-GulNeural",
+        "ne": "ne-NP-HemkalaNeural",
+        "es": "es-ES-ElviraNeural",
+        "fr": "fr-FR-DeniseNeural",
+        "de": "de-DE-KatjaNeural",
+        "it": "it-IT-ElsaNeural",
+        "pt": "pt-BR-FranciscaNeural",
+        "ru": "ru-RU-SvetlanaNeural",
+        "ja": "ja-JP-NanamiNeural",
+        "ko": "ko-KR-SunHiNeural",
+        "zh": "zh-CN-XiaoxiaoNeural",
+        "ar": "ar-SA-ZariyahNeural",
+        "nl": "nl-NL-ColetteNeural",
+        "tr": "tr-TR-EmelNeural",
+        "pl": "pl-PL-ZofiaNeural",
+        "sv": "sv-SE-SofieNeural",
+        "th": "th-TH-PremwadeeNeural",
+        "vi": "vi-VN-HoaiMyNeural",
+        "fil": "fil-PH-BlessicaNeural",
+        "he": "he-IL-HilaNeural",
+        "id": "id-ID-GadisNeural",
+        "hi-in": "hi-IN-SwaraNeural",
+        "en-in": "en-IN-NeerjaNeural",
+    }
     
     def __init__(self, voice: str = "en-US-AvaNeural"):
         self.voice = voice
@@ -306,7 +342,26 @@ class EdgeTTS(TTSProvider):
         except ImportError:
             logger.error("edge-tts not installed. Run: pip install edge-tts")
             raise
-    
+
+    def _voice_for(self, language: Optional[str]) -> str:
+        """Pick the best Edge voice for a language code (e.g. 'ta' -> Tamil)."""
+        if not language:
+            return self.voice
+        lang = language.lower().replace("_", "-")
+        if lang in self.LANGUAGE_VOICES:
+            return self.LANGUAGE_VOICES[lang]
+        prefix = lang.split("-")[0]
+        return self.LANGUAGE_VOICES.get(prefix, self.voice)
+
+    async def _synthesize_bytes(self, text: str, voice: str) -> bytes:
+        """Fetch full MP3 audio for the text using the given voice."""
+        communicate = self.client.Communicate(text, voice)
+        audio_data = b""
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                audio_data += chunk["data"]
+        return audio_data
+
     async def synthesize(
         self,
         text: str,
@@ -314,16 +369,20 @@ class EdgeTTS(TTSProvider):
         language: str = "en"
     ) -> AsyncGenerator[bytes, None]:
         """Stream text-to-speech audio using Edge TTS."""
-        voice = voice_id or self.voice
+        voice = voice_id or self._voice_for(language)
         
         try:
-            communicate = self.client.Communicate(text, voice)
-            
-            # Collect all audio data
-            audio_data = b""
-            async for chunk in communicate.stream():
-                if chunk["type"] == "audio":
-                    audio_data += chunk["data"]
+            try:
+                audio_data = await self._synthesize_bytes(text, voice)
+            except Exception as e:
+                # Fall back to the default voice if the language voice fails
+                if voice == self.voice:
+                    raise
+                logger.warning("Edge TTS voice failed, falling back", voice=voice, error=str(e))
+                audio_data = await self._synthesize_bytes(text, self.voice)
+
+            if not audio_data and voice != self.voice:
+                audio_data = await self._synthesize_bytes(text, self.voice)
             
             if not audio_data:
                 logger.error("Edge TTS returned no audio data")

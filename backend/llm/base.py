@@ -18,6 +18,51 @@ logger = structlog.get_logger()
 settings = get_settings()
 
 
+def local_fallback_reply(
+    conversation_history: Optional[List[ConversationMessage]] = None
+) -> str:
+    """
+    Reply used when the LLM provider is unreachable (missing/invalid API key,
+    no Ollama, network down). Keeps the conversation useful instead of
+    surfacing an error to the user.
+    """
+    last_user = ''
+    for msg in reversed(conversation_history or []):
+        if msg.role == MessageRole.USER and (msg.content or '').strip():
+            last_user = msg.content.strip()
+            break
+    text = last_user.lower()
+
+    if not last_user:
+        return "I'm here and ready. Ask me anything, or switch to Translation mode to translate a conversation live."
+
+    if any(w in text for w in ('hi', 'hello', 'hey', 'namaste', 'good morning', 'good evening')):
+        return (
+            "Hello! I'm ClearSpeak, your AI voice assistant. I translate conversations "
+            "across 22 Indian languages, run voice and video calls with live captions, "
+            "and answer everyday questions. What would you like to do?"
+        )
+    if any(w in text for w in ('time', 'समय', 'நேரம்')):
+        return f"It's {datetime.now().strftime('%I:%M %p')} right now."
+    if any(w in text for w in ('date', 'today', 'day')):
+        return f"Today is {datetime.now().strftime('%A, %B %d, %Y')}."
+    if any(w in text for w in ('who are you', 'your name', 'what can you do', 'help me')):
+        return (
+            "I'm ClearSpeak — your real-time voice assistant. I translate between "
+            "22 Indian languages, answer questions, and power calls and live streams "
+            "with instant captions."
+        )
+    if any(w in text for w in ('thank', 'thanks', 'shukriya', 'nandri')):
+        return "You're welcome! Anything else I can help with?"
+
+    topic = last_user[:80].rstrip()
+    return (
+        f"I've noted that you said about \"{topic}\". Translation, calls and live "
+        "captions are fully available right now — ask me the time, say hello, or "
+        "switch to Translation mode for a live conversation."
+    )
+
+
 class ToolRegistry:
     """
     Registry for LLM tools with function calling support.
@@ -125,7 +170,9 @@ class LLMProvider:
         temperature: float = 0.7,
         max_tokens: int = 150
     ):
-        self.client = AsyncOpenAI(api_key=api_key)
+        # No key configured → stay offline and use local_fallback_reply()
+        # instead of failing at client construction time.
+        self.client = AsyncOpenAI(api_key=api_key) if api_key else None
         self.model = model
         self.temperature = temperature
         self.max_tokens = max_tokens
@@ -214,6 +261,9 @@ class LLMProvider:
         Returns:
             Generated response text
         """
+        if not self.client:
+            return local_fallback_reply(conversation_history)
+        
         messages = []
         
         if system_prompt:
@@ -237,7 +287,7 @@ class LLMProvider:
             
         except Exception as e:
             logger.error("LLM generation failed", error=str(e))
-            return "I'm sorry, I encountered an error processing your request."
+            return local_fallback_reply(conversation_history)
     
     async def generate_response_with_tools(
         self,
@@ -250,6 +300,13 @@ class LLMProvider:
         Yields:
             Dictionary with type (text/tool_call/result) and content
         """
+        if not self.client:
+            yield {
+                "type": "text",
+                "content": local_fallback_reply(conversation_history)
+            }
+            return
+        
         messages = []
         
         if system_prompt:
@@ -344,7 +401,7 @@ class LLMProvider:
                 logger.error("LLM generation failed", error=str(e), round=round_num)
                 yield {
                     "type": "text",
-                    "content": "I'm sorry, I encountered an error processing your request."
+                    "content": local_fallback_reply(conversation_history)
                 }
                 return
         
@@ -365,6 +422,10 @@ class LLMProvider:
         Yields:
             Text chunks as they're generated
         """
+        if not self.client:
+            yield local_fallback_reply(conversation_history)
+            return
+        
         messages = []
         
         if system_prompt:
@@ -391,7 +452,7 @@ class LLMProvider:
                     
         except Exception as e:
             logger.error("LLM streaming failed", error=str(e))
-            yield "I'm sorry, I encountered an error processing your request."
+            yield local_fallback_reply(conversation_history)
 
 
 class OllamaLLMProvider:
@@ -521,7 +582,7 @@ class OllamaLLMProvider:
                 
         except Exception as e:
             logger.error("Ollama generation failed", error=str(e))
-            return "I'm sorry, I encountered an error processing your request."
+            return local_fallback_reply(messages)
     
     def _clean_response(self, text: str) -> str:
         """Clean up LLM response to remove artifacts and improve quality."""
@@ -605,7 +666,7 @@ class OllamaLLMProvider:
                             
         except Exception as e:
             logger.error("Ollama streaming failed", error=str(e))
-            yield "I'm sorry, I encountered an error processing your request."
+            yield local_fallback_reply(messages)
     
     async def generate_response_with_tools(
         self,
@@ -672,7 +733,7 @@ class OllamaLLMProvider:
                 
         except Exception as e:
             logger.error("Ollama streaming failed", error=str(e))
-            yield "I'm sorry, I encountered an error processing your request."
+            yield local_fallback_reply(conversation_history)
     
     def _build_prompt(self, messages: List[Dict[str, str]]) -> str:
         """Build a prompt from messages using Llama format for better instruction following."""

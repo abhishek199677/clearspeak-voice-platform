@@ -17,32 +17,50 @@ echo "=========================================================="
 echo "[1/2] Launching Enterprise Backend (FastAPI + WebSocket + ASR/TTS/LLM)..."
 cd "$PROJECT_DIR"
 
-if [ -f "$PROJECT_DIR/.venv/bin/python" ]; then
-    PYTHON_BIN="$PROJECT_DIR/.venv/bin/python"
+# Don't start a second backend if one is already listening
+if lsof -iTCP:8000 -sTCP:LISTEN > /dev/null 2>&1; then
+    echo "      ✓ Backend already running on port 8000"
 else
-    PYTHON_BIN="python3"
-fi
-
-nohup "$PYTHON_BIN" -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 > "$LOG_DIR/backend.log" 2>&1 &
-BACKEND_PID=$!
-echo "$BACKEND_PID" > "$LOG_DIR/backend.pid"
-
-# Wait for backend to be ready
-echo "      Waiting for backend health check..."
-for i in {1..15}; do
-    if curl -s http://127.0.0.1:8000/health > /dev/null 2>&1; then
-        echo "      ✓ Backend running on http://127.0.0.1:8000 (PID: $BACKEND_PID)"
-        break
+    # Pick the first Python environment that actually has the backend dependencies
+    PYTHON_BIN=""
+    for CAND in "$PROJECT_DIR/.venv312/bin/python" "$PROJECT_DIR/.venv/bin/python" "$PROJECT_DIR/venv/bin/python" "python3"; do
+        if [ -x "$CAND" ] || command -v "$CAND" > /dev/null 2>&1; then
+            if "$CAND" -c "import fastapi, uvicorn, whisper, edge_tts, httpx" > /dev/null 2>&1; then
+                PYTHON_BIN="$CAND"
+                break
+            fi
+        fi
+    done
+    if [ -z "$PYTHON_BIN" ]; then
+        echo "ERROR: No Python environment with backend dependencies found."
+        echo "       Install them with: pip install -r requirements.txt"
+        exit 1
     fi
-    sleep 1
-done
+    echo "      Using Python: $PYTHON_BIN ($("$PYTHON_BIN" -V 2>&1))"
+
+    nohup "$PYTHON_BIN" -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 > "$LOG_DIR/backend.log" 2>&1 &
+    BACKEND_PID=$!
+    echo "$BACKEND_PID" > "$LOG_DIR/backend.pid"
+
+    # Wait for backend to be ready
+    echo "      Waiting for backend health check..."
+    for i in {1..30}; do
+        if curl -s http://127.0.0.1:8000/health > /dev/null 2>&1; then
+            echo "      ✓ Backend running on http://127.0.0.1:8000 (PID: $BACKEND_PID)"
+            break
+        fi
+        sleep 1
+    done
+fi
 
 # 2. Start Frontend App
 echo "[2/2] Launching Frontend Interface..."
 cd "$PROJECT_DIR/frontend-app"
 
-# Check if already running on 3001 or 3000
-if lsof -iTCP:3001 -sTCP:LISTEN > /dev/null 2>&1; then
+# Check if already running (Vite uses 5173, older configs 3000/3001)
+if lsof -iTCP:5173 -sTCP:LISTEN > /dev/null 2>&1; then
+    echo "      ✓ Frontend is already running on port 5173"
+elif lsof -iTCP:3001 -sTCP:LISTEN > /dev/null 2>&1; then
     echo "      ✓ Frontend is already running on port 3001"
 elif lsof -iTCP:3000 -sTCP:LISTEN > /dev/null 2>&1; then
     echo "      ✓ Frontend is already running on port 3000"
@@ -58,7 +76,7 @@ echo ""
 echo "=========================================================="
 echo " ClearSpeak Enterprise Platform is LIVE"
 echo "=========================================================="
-echo "  Frontend Application: http://localhost:3001 (or :3000)"
+echo "  Frontend Application: http://localhost:5173"
 echo "  Backend API Server:   http://localhost:8000"
 echo "  API Documentation:    http://localhost:8000/api/docs"
 echo "  Health & Metrics:     http://localhost:8000/health"

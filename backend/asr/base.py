@@ -11,6 +11,31 @@ from backend.models.schemas import TranscriptMessage
 
 logger = structlog.get_logger()
 
+# Devanagari/Indic script hints for Whisper. Without a hint the base model
+# often writes Hindi speech in Urdu/Arabic script instead of the native script.
+_WHISPER_SCRIPT_HINTS = {
+    "hi": "नमस्ते। हिंदी में उत्तर दें।",
+    "mr": "नमस्कार। मराठीत उत्तर द्या।",
+    "bn": "নমস্কার। বাংলায় উত্তর দিন।",
+    "ta": "வணக்கம்। தமிழில் பதிலளிக்கவும்।",
+    "te": "నమస్కారం। తెలుగులో సమాధానం ఇవ్వండి।",
+    "ml": "നമസ്കാരം. മലയാളത്തിൽ ഉത്തരം നൽകുക.",
+    "kn": "ನಮಸ್ಕಾರ. ಕನ್ನಡದಲ್ಲಿ ಉತ್ತರಿಸಿ.",
+    "gu": "નમસ્તે. ગુજરાતીમાં જવાબ આપો.",
+    "pa": "ਸਤ ਸ੍ਰੀ ਅਕਾਲ। ਪੰਜਾਬੀ ਵਿੱਚ ਜਵਾਬ ਦਿਓ।",
+    "ur": "السلام علیکم۔ اردو میں جواب دیں۔",
+    "or": "ନମସ୍କାର। ଓଡ଼ିଆରେ ଉତ୍ତର ଦିଅ।",
+    "as": "নমস্কাৰ। অসমীয়াত উত্তৰ দিয়ক।",
+    "ne": "नमस्ते। नेपालीमा जवाफ दिनुहोस्।",
+}
+
+
+def _whisper_prompt(language: Optional[str]) -> Optional[str]:
+    """Return a native-script prompt hint for Whisper for the given language."""
+    if not language or language == "auto":
+        return None
+    return _WHISPER_SCRIPT_HINTS.get(language.lower().split("-")[0])
+
 
 class ASRProvider(ABC):
     """Abstract base class for ASR providers."""
@@ -136,7 +161,7 @@ class DeepgramASR(ASRProvider):
         
         options = LiveOptions(
             model="nova-2",
-            language=language,
+            language="en" if language in (None, "", "auto") else language,
             encoding="linear16",
             sample_rate=16000,
             channels=1,
@@ -248,7 +273,14 @@ class WhisperASR(ASRProvider):
         session_id: str,
         language: str = "en"
     ) -> AsyncGenerator[TranscriptMessage, None]:
-        """Transcribe audio stream using sliding window approach."""
+        """
+        Transcribe audio stream using a sliding 30s window.
+
+        Buffers accumulate across chunks for the lifetime of the stream, and
+        any remainder is flushed when the stream ends so short utterances are
+        never silently dropped. `language="auto"` lets Whisper detect the
+        spoken language itself.
+        """
         if not self.model:
             logger.warning("Whisper model not available, skipping transcription")
             return
@@ -256,34 +288,50 @@ class WhisperASR(ASRProvider):
         import numpy as np
         
         buffer = bytearray()
-        window_size = 16000 * 3  # 3 seconds
-        overlap_size = 16000 * 1  # 1 second overlap
-        
-        async for chunk in audio_stream:
-            buffer.extend(chunk)
-            
-            while len(buffer) >= window_size * 2:
-                # Extract window
-                audio_window = bytes(buffer[:window_size])
-                buffer = buffer[window_size - overlap_size:]
-                
-                # Transcribe
-                audio_np = np.frombuffer(audio_window, dtype=np.int16).astype(np.float32) / 32768.0
-                
-                result = self.model.transcribe(
+        window_bytes = 16000 * 2 * 30   # Whisper's native 30-second window
+        overlap_bytes = 16000 * 2       # 1 second overlap between windows
+        min_bytes = 1600                # ~0.05s — ignore crumbs
+
+        async def transcribe_chunk(data: bytes):
+            if len(data) < min_bytes:
+                return
+            audio_np = np.frombuffer(data, dtype=np.int16).astype(np.float32) / 32768.0
+            lang = None if language in (None, "", "auto") else language
+            prompt = _whisper_prompt(language)
+            try:
+                result = await asyncio.to_thread(
+                    self.model.transcribe,
                     audio_np,
-                    language=language if language != "auto" else None,
+                    language=lang,
+                    initial_prompt=prompt,
                     fp16=False
                 )
-                
-                if result["text"].strip():
-                    yield TranscriptMessage(
-                        session_id=session_id,
-                        transcript=result["text"],
-                        confidence=1.0,
-                        is_final=True,
-                        language=result.get("language", language)
-                    )
+            except Exception as e:
+                logger.error("Whisper transcription failed", session_id=session_id, error=str(e))
+                return
+            if result["text"].strip():
+                yield TranscriptMessage(
+                    session_id=session_id,
+                    transcript=result["text"],
+                    confidence=1.0,
+                    is_final=True,
+                    language=result.get("language", language)
+                )
+        
+        async for chunk in audio_stream:
+            if not chunk:
+                continue
+            buffer.extend(chunk)
+            while len(buffer) >= window_bytes:
+                window = bytes(buffer[:window_bytes])
+                buffer = buffer[window_bytes - overlap_bytes:]
+                async for transcript in transcribe_chunk(window):
+                    yield transcript
+
+        # End of stream: transcribe whatever is left
+        if buffer:
+            async for transcript in transcribe_chunk(bytes(buffer)):
+                yield transcript
     
     async def transcribe_audio(
         self,
@@ -303,7 +351,8 @@ class WhisperASR(ASRProvider):
             
             result = self.model.transcribe(
                 audio_np,
-                language=language if language != "auto" else None,
+                language=language if language not in (None, "", "auto") else None,
+                initial_prompt=_whisper_prompt(language),
                 fp16=False
             )
             

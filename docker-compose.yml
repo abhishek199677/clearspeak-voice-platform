@@ -5,8 +5,8 @@ services:
   nginx:
     image: nginx:alpine
     ports:
-      - "80:80"
-      - "443:443"
+      - "8080:80"
+      - "8443:443"
     volumes:
       - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./frontend-app/dist:/usr/share/nginx/html:ro
@@ -38,8 +38,8 @@ services:
       - DEFAULT_LANGUAGE=en
       - INDIA_DEFAULT_LANGUAGE=hi
       - ENABLE_AUTO_TRANSLATE=true
-      - ALLOWED_HOSTS=*
-      - CORS_ORIGINS=*
+      - ALLOWED_HOSTS=["*"]
+      - CORS_ORIGINS=["*"]
       - INDIA_LANGUAGE_CODES=["hi","bn","ta","te","ml","kn","gu","mr","pa","ur","as","or","sa","gom","doi","mai","sat","ks","mni","brx","sd","ne"]
     depends_on:
       - redis
@@ -58,7 +58,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "6389:6379"
     volumes:
       - redis_data:/data
     restart: unless-stopped

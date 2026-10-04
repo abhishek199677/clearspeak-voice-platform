@@ -1,11 +1,17 @@
+// Ports that belong to dev/preview servers (Vite etc.) — the API never lives
+// on these, so we point at the backend port instead of the UI origin.
+const DEV_SERVER_PORTS = new Set(['3000', '3001', '4173', '5174', '5173'])
+
 export function getApiBaseUrl() {
   if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) {
     return import.meta.env.VITE_API_URL
   }
   if (typeof window !== 'undefined') {
     const { protocol, hostname, port } = window.location
-    // If running frontend on Vite dev port 3000/3001, connect to backend on port 8000
-    if (port === '3000' || port === '3001') {
+    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1'
+    // Local dev/preview: the API always lives on the backend port, whatever
+    // Vite/preview port the UI happens to be served from (works for LAN IPs too).
+    if ((isLocal || DEV_SERVER_PORTS.has(port)) && port !== '8000') {
       return `${protocol}//${hostname}:8000`
     }
     // Production / reverse-proxied / custom domain
@@ -28,9 +34,12 @@ const API_URL = getApiBaseUrl()
 export async function healthCheck() {
   try {
     const res = await fetch(`${API_URL}/health`)
-    return res.json()
-  } catch (err) {
-    return { status: 'healthy', version: '2.0.0', uptime_seconds: 120 }
+    if (!res.ok) return { status: 'offline' }
+    // A SPA/dev server may answer 200 with HTML — only trust real JSON.
+    const data = await res.json()
+    return data && data.status ? data : { status: 'offline' }
+  } catch {
+    return { status: 'offline' }
   }
 }
 
@@ -54,16 +63,25 @@ export async function getProviders() {
 
 // Sessions
 export async function createSession(userId) {
+  const res = await fetch(`${API_URL}/sessions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: userId }),
+  })
+  let data = null
   try {
-    const res = await fetch(`${API_URL}/sessions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: userId }),
-    })
-    return res.json()
-  } catch (err) {
-    return { session_id: `session-${Date.now()}`, state: 'ready', created_at: new Date().toISOString() }
+    data = await res.json()
+  } catch {
+    // Non-JSON response (e.g. the request hit the wrong server)
   }
+  if (!res.ok || !data || !data.session_id) {
+    throw new Error(
+      data?.detail
+        ? String(data.detail)
+        : `Server unreachable at ${API_URL} (${res.status || 'network error'})`
+    )
+  }
+  return data
 }
 
 export async function getSession(sessionId) {
@@ -72,8 +90,12 @@ export async function getSession(sessionId) {
 }
 
 export async function closeSession(sessionId) {
-  const res = await fetch(`${API_URL}/sessions/${sessionId}`, { method: 'DELETE' })
-  return res.json()
+  try {
+    const res = await fetch(`${API_URL}/sessions/${sessionId}`, { method: 'DELETE' })
+    return res.json()
+  } catch {
+    return { status: 'closed' }
+  }
 }
 
 // Translation
@@ -261,6 +283,6 @@ export async function sendMessage(channelId, content, userId, userName) {
 }
 
 export async function getOnlineUsers() {
-  const res = await fetch(`${API_URL}/online-users`)
+  const res = await fetch(`${API_URL}/users/online`)
   return res.json()
 }

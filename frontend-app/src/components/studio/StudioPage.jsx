@@ -7,6 +7,7 @@ import {
   AccordionStreamingContent,
   AccordionTrigger,
 } from '@/components/ui/accordion-generative-utils/accordion'
+import DemoVideo from '@/components/DemoVideo'
 
 const EASE = [0.16, 1, 0.3, 1]
 
@@ -375,7 +376,7 @@ function LanguageStrip() {
 function WorkSection() {
   return (
     <section id="studio-work" className="py-24 sm:py-36 px-5 sm:px-8 max-w-7xl mx-auto">
-      <SectionHead index="02" kicker="Selected Work">
+      <SectionHead index="03" kicker="Selected Work">
         <Reveal>Where ClearSpeak</Reveal>
         <Reveal delay={0.1}>earns its keep.</Reveal>
       </SectionHead>
@@ -496,7 +497,7 @@ function StatsSection() {
     <section className="py-24 sm:py-36 px-5 sm:px-8 relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(70%_60%_at_50%_50%,rgba(108,60,225,0.14),transparent_70%)]" />
       <div className="relative max-w-7xl mx-auto">
-        <SectionHead index="03" kicker="By the Numbers">
+        <SectionHead index="04" kicker="By the Numbers">
           <Reveal>Speed is the feature.</Reveal>
         </SectionHead>
 
@@ -522,7 +523,7 @@ function StatsSection() {
 function TestimonialsSection() {
   return (
     <section className="py-24 sm:py-36 px-5 sm:px-8 max-w-7xl mx-auto">
-      <SectionHead index="04" kicker="Words">
+      <SectionHead index="05" kicker="Words">
         <Reveal>From the people</Reveal>
         <Reveal delay={0.1}>who stopped translating.</Reveal>
       </SectionHead>
@@ -551,7 +552,7 @@ function TestimonialsSection() {
 function FaqSection() {
   return (
     <section id="faq" className="py-24 sm:py-36 px-5 sm:px-8 max-w-4xl mx-auto">
-      <SectionHead index="05" kicker="Generative AI FAQ">
+      <SectionHead index="06" kicker="Generative AI FAQ">
         <Reveal>Good to know.</Reveal>
       </SectionHead>
 
@@ -635,6 +636,8 @@ export default function StudioPage() {
       <ServicesSection />
       <div className="section-divider" />
       <LanguageStrip />
+      <DemoVideo />
+      <div className="section-divider" />
       <WorkSection />
       <div className="section-divider" />
       <StatsSection />

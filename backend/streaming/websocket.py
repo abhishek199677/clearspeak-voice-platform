@@ -27,6 +27,36 @@ AUDIO_FORMAT_PCM = "pcm"
 AUDIO_FORMAT_OPUS = "opus"
 AUDIO_HEADER_MAGIC = b"CSA1"  # ClearSpeak Audio v1
 
+# Utterance buffering / voice-activity endpointing
+TARGET_SAMPLE_RATE = 16000
+_SILENCE_RMS = 400.0            # below this RMS a frame counts as silence
+_SILENCE_FRAMES_TO_END = 3      # ~768ms of quiet ends an utterance
+_MIN_UTTERANCE_BYTES = TARGET_SAMPLE_RATE * 2 // 4   # 0.25s minimum to bother transcribing
+_MAX_UTTERANCE_BYTES = TARGET_SAMPLE_RATE * 2 * 10   # hard cap: 10s per utterance
+
+
+def _rms(pcm: bytes) -> float:
+    """Root-mean-square amplitude of 16-bit little-endian PCM audio."""
+    import numpy as np
+    samples = np.frombuffer(pcm, dtype=np.int16)
+    if samples.size == 0:
+        return 0.0
+    return float(np.sqrt(np.mean(samples.astype(np.float32) ** 2)))
+
+
+def _resample_pcm16(pcm: bytes, src_rate: int, dst_rate: int) -> bytes:
+    """Linearly resample 16-bit PCM audio to the target sample rate."""
+    import numpy as np
+    samples = np.frombuffer(pcm, dtype=np.int16).astype(np.float32)
+    if samples.size == 0:
+        return b""
+    n_out = int(round(samples.size * dst_rate / src_rate))
+    if n_out <= 0:
+        return b""
+    positions = np.linspace(0, samples.size - 1, n_out)
+    resampled = np.interp(positions, np.arange(samples.size), samples)
+    return resampled.astype(np.int16).tobytes()
+
 
 class ConnectionManager:
     """
@@ -334,29 +364,146 @@ class VoiceWebSocketHandler:
             )
         
         try:
+            # Buffer mic frames into utterances in a background worker so the
+            # receive loop stays responsive and ASR gets whole phrases instead
+            # of individual 256ms frames.
+            audio_queue: asyncio.Queue = asyncio.Queue()
+            worker = asyncio.create_task(self._audio_worker(session_id, audio_queue))
+
             while True:
-                # Try to receive as binary first, then JSON
                 message = await websocket.receive()
-                
-                if message.get("type") == "websocket.receive":
-                    # Check if it's binary or text
-                    if "bytes" in message and message["bytes"]:
-                        await self._handle_binary_audio(session_id, message["bytes"])
-                    elif "text" in message and message["text"]:
-                        try:
-                            data = json.loads(message["text"])
-                            await self._handle_json_message(session_id, user_id, data)
-                        except json.JSONDecodeError:
-                            logger.warning("Invalid JSON received", session_id=session_id)
-                
+
+                if message.get("type") == "websocket.disconnect":
+                    break
+                if message.get("type") != "websocket.receive":
+                    continue
+
+                if "bytes" in message and message["bytes"]:
+                    await self._handle_binary_audio(session_id, message["bytes"], audio_queue)
+                elif "text" in message and message["text"]:
+                    try:
+                        data = json.loads(message["text"])
+                        await self._handle_json_message(session_id, user_id, data, audio_queue)
+                    except json.JSONDecodeError:
+                        logger.warning("Invalid JSON received", session_id=session_id)
+
         except WebSocketDisconnect:
             logger.info("Client disconnected", session_id=session_id)
         except Exception as e:
             logger.error("WebSocket error", session_id=session_id, error=str(e))
         finally:
+            if "audio_queue" in locals():
+                audio_queue.put_nowait(("stop",))
+                try:
+                    await asyncio.wait_for(worker, timeout=15)
+                except asyncio.TimeoutError:
+                    worker.cancel()
+                except Exception as e:
+                    logger.error("Audio worker failed", session_id=session_id, error=str(e))
             await self._cleanup_connection(session_id, user_id)
-    
-    async def _handle_json_message(self, session_id: str, user_id: Optional[str], data: dict):
+
+    async def _audio_worker(self, session_id: str, audio_queue: "asyncio.Queue"):
+        """
+        Accumulate incoming mic frames into utterances using simple VAD
+        endpointing, then hand each complete utterance to the pipeline.
+
+        Without this, every 256ms frame was fed to ASR as its own stream and
+        transcription buffers were discarded before they ever filled up.
+        """
+        buffer = bytearray()
+        silent_frames = 0
+
+        async def flush():
+            nonlocal buffer, silent_frames
+            if len(buffer) >= _MIN_UTTERANCE_BYTES:
+                try:
+                    await self._process_utterance(session_id, bytes(buffer))
+                except Exception as e:
+                    logger.error("Utterance processing failed", session_id=session_id, error=str(e))
+            buffer.clear()
+            silent_frames = 0
+
+        try:
+            while True:
+                item = await audio_queue.get()
+                kind = item[0]
+
+                if kind == "stop":
+                    return
+                if kind == "flush":
+                    await flush()
+                    continue
+
+                pcm, sample_rate = item[1], item[2]
+                if sample_rate and sample_rate != TARGET_SAMPLE_RATE:
+                    pcm = _resample_pcm16(pcm, sample_rate, TARGET_SAMPLE_RATE)
+                if not pcm:
+                    continue
+
+                if _rms(pcm) < _SILENCE_RMS:
+                    silent_frames += 1
+                    if silent_frames >= _SILENCE_FRAMES_TO_END:
+                        await flush()
+                    continue
+
+                silent_frames = 0
+                buffer.extend(pcm)
+                if len(buffer) >= _MAX_UTTERANCE_BYTES:
+                    await flush()
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            logger.error("Audio worker crashed", session_id=session_id, error=str(e))
+
+    async def _process_utterance(self, session_id: str, pcm: bytes):
+        """Run one complete utterance through the voice pipeline."""
+        if not self.pipeline:
+            await self.connection_manager.send_json(session_id, {
+                "type": "error",
+                "text": "Voice pipeline unavailable — check the server logs."
+            })
+            return
+        mode = self.connection_manager.get_session_mode(session_id)
+
+        async def audio_stream():
+            yield pcm
+
+        await self._send_pipeline_responses(
+            session_id,
+            self.pipeline.process_audio_stream(session_id, audio_stream(), mode=mode)
+        )
+
+    async def _send_pipeline_responses(self, session_id: str, responses):
+        """
+        Send pipeline responses to the client, merging consecutive audio
+        chunks into a single binary frame so the browser receives one
+        playable file instead of dozens of truncated MP3 fragments.
+        """
+        pending_audio = bytearray()
+        async for response in responses:
+            if response.type == "audio" and response.audio_data:
+                pending_audio.extend(bytes.fromhex(response.audio_data))
+                continue
+            if pending_audio:
+                await self._send_audio(session_id, bytes(pending_audio))
+                pending_audio.clear()
+            await self.connection_manager.send_message(session_id, response)
+        if pending_audio:
+            await self._send_audio(session_id, bytes(pending_audio))
+
+    async def _send_audio(self, session_id: str, audio: bytes):
+        await self.connection_manager.send_message(
+            session_id,
+            VoiceMessage(type="audio", session_id=session_id, audio_data=audio.hex())
+        )
+
+    async def _handle_json_message(
+        self,
+        session_id: str,
+        user_id: Optional[str],
+        data: dict,
+        audio_queue: Optional["asyncio.Queue"] = None
+    ):
         """Handle JSON control messages."""
         msg_type = data.get("type", "")
         
@@ -383,9 +530,10 @@ class VoiceWebSocketHandler:
             source_lang = data.get("source_language", "en")
             target_lang = data.get("target_language", "te")
             
-            await self.pipeline.set_translation_languages(
-                session_id, source_lang, target_lang
-            )
+            if self.pipeline:
+                await self.pipeline.set_translation_languages(
+                    session_id, source_lang, target_lang
+                )
             
             await self.connection_manager.send_json(session_id, {
                 "type": "languages_set",
@@ -393,13 +541,18 @@ class VoiceWebSocketHandler:
                 "target_language": target_lang,
                 "session_id": session_id
             })
+
+        # End of utterance: process whatever the mic buffer still holds
+        elif msg_type == "flush_audio":
+            if audio_queue:
+                await audio_queue.put(("flush",))
         
         # Voice/text messages
         elif msg_type in ["audio", "text", "control", "heartbeat"]:
             message = VoiceMessage(**data)
             
             if message.type == "audio":
-                await self._handle_audio_message(session_id, message)
+                await self._handle_audio_message(session_id, message, audio_queue)
             elif message.type == "text":
                 await self._handle_text_message(session_id, message)
             elif message.type == "control":
@@ -407,7 +560,12 @@ class VoiceWebSocketHandler:
             elif message.type == "heartbeat":
                 pass  # Acknowledged implicitly
     
-    async def _handle_binary_audio(self, session_id: str, data: bytes):
+    async def _handle_binary_audio(
+        self,
+        session_id: str,
+        data: bytes,
+        audio_queue: "asyncio.Queue"
+    ):
         """
         Handle binary audio data.
         
@@ -433,26 +591,19 @@ class VoiceWebSocketHandler:
             
             if not audio_data:
                 return
-            
-            # Get pipeline mode
-            mode = self.connection_manager.get_session_mode(session_id)
-            
-            # Create audio generator
-            async def audio_generator():
-                yield audio_data
-            
-            # Process through pipeline
-            async for response in self.pipeline.process_audio_stream(
-                session_id,
-                audio_generator(),
-                mode=mode
-            ):
-                await self.connection_manager.send_message(session_id, response)
+
+            sample_rate = int(header.get("sample_rate") or TARGET_SAMPLE_RATE)
+            await audio_queue.put(("audio", audio_data, sample_rate))
                 
         except Exception as e:
             logger.error("Failed to process binary audio", session_id=session_id, error=str(e))
     
-    async def _handle_audio_message(self, session_id: str, message: VoiceMessage):
+    async def _handle_audio_message(
+        self,
+        session_id: str,
+        message: VoiceMessage,
+        audio_queue: Optional["asyncio.Queue"] = None
+    ):
         """Handle incoming audio message (legacy base64 format)."""
         import base64
         
@@ -461,37 +612,35 @@ class VoiceWebSocketHandler:
         
         if not audio_data:
             return
+
+        if audio_queue:
+            await audio_queue.put(("audio", audio_data, message.sample_rate or TARGET_SAMPLE_RATE))
+            await audio_queue.put(("flush",))
+            return
         
-        # Get pipeline mode
-        mode = self.connection_manager.get_session_mode(session_id)
-        
-        # Create audio stream from single chunk
-        async def audio_generator():
-            yield audio_data
-        
-        # Process through pipeline
-        async for response in self.pipeline.process_audio_stream(
-            session_id,
-            audio_generator(),
-            mode=mode
-        ):
-            await self.connection_manager.send_message(session_id, response)
+        # Fallback: process the chunk directly
+        await self._process_utterance(session_id, audio_data)
     
     async def _handle_text_message(self, session_id: str, message: VoiceMessage):
         """Handle incoming text message."""
         if not message.text:
+            return
+
+        if not self.pipeline:
+            await self.connection_manager.send_json(session_id, {
+                "type": "error",
+                "text": "Voice pipeline unavailable — check the server logs."
+            })
             return
         
         # Get pipeline mode
         mode = self.connection_manager.get_session_mode(session_id)
         
         # Process through pipeline
-        async for response in self.pipeline.process_text_input(
+        await self._send_pipeline_responses(
             session_id,
-            message.text,
-            mode=mode
-        ):
-            await self.connection_manager.send_message(session_id, response)
+            self.pipeline.process_text_input(session_id, message.text, mode=mode)
+        )
     
     async def _handle_control_message(self, session_id: str, message: VoiceMessage):
         """Handle control messages (pause, resume, etc.)."""
@@ -550,12 +699,12 @@ class VoiceWebSocketHandler:
             
             # If in agent mode, process through LLM pipeline
             mode = self.connection_manager.get_session_mode(session_id)
-            if mode == PipelineMode.AGENT and content:
+            if mode == PipelineMode.AGENT and content and self.pipeline:
                 try:
-                    async for response in self.pipeline.process_text_input(
-                        session_id, content, mode=mode
-                    ):
-                        await self.connection_manager.send_message(session_id, response)
+                    await self._send_pipeline_responses(
+                        session_id,
+                        self.pipeline.process_text_input(session_id, content, mode=mode)
+                    )
                 except Exception as e:
                     logger.error("Agent processing failed", session_id=session_id, error=str(e))
                     await self.connection_manager.send_json(session_id, {
@@ -565,12 +714,12 @@ class VoiceWebSocketHandler:
                     })
             
             # If in translation mode, process translation
-            elif mode == PipelineMode.TRANSLATION and content:
+            elif mode == PipelineMode.TRANSLATION and content and self.pipeline:
                 try:
-                    async for response in self.pipeline.process_text_input(
-                        session_id, content, mode=mode
-                    ):
-                        await self.connection_manager.send_message(session_id, response)
+                    await self._send_pipeline_responses(
+                        session_id,
+                        self.pipeline.process_text_input(session_id, content, mode=mode)
+                    )
                 except Exception as e:
                     logger.error("Translation processing failed", session_id=session_id, error=str(e))
                     await self.connection_manager.send_json(session_id, {

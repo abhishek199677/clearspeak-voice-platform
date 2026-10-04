@@ -1,5 +1,8 @@
 .PHONY: dev start stop clean test docker-up docker-down
 
+# First Python env that has the backend dependencies
+PY := $(shell for p in .venv312/bin/python .venv/bin/python venv/bin/python python3; do $$p -c "import fastapi, whisper, edge_tts, httpx" >/dev/null 2>&1 && echo $$p && break; done)
+
 # Start both servers in background with logging and health checks
 start:
 	@./start-all.sh
@@ -10,9 +13,9 @@ stop:
 
 # Run both servers in the foreground (Ctrl+C stops both)
 dev:
-	@echo "Starting backend and frontend together..."
+	@echo "Starting backend and frontend together with: $(PY)"
 	@trap 'kill 0' EXIT; \
-	.venv/bin/python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload & \
+	$(PY) -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload & \
 	(cd frontend-app && npm run dev) & \
 	wait
 

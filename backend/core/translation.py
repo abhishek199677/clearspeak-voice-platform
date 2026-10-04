@@ -25,9 +25,11 @@ INDIAN_SCRIPT_RANGES = {
     "gu": (0x0A80, 0x0AFF),   # Gujarati
     "pa": (0x0A00, 0x0A7F),   # Gurmukhi (Punjabi)
     "or": (0x0B00, 0x0B7F),   # Odia
-    "sd": (0x0560, 0x058F),   # Sindhi (Extended Arabic - also uses Devanagari)
-    "ks": (0x0600, 0x06FF),   # Kashmiri (Arabic script)
+    # NOTE: Urdu and Kashmiri share the Arabic-script range — "ur" must be
+    # declared first so script-count ties resolve to Urdu.
     "ur": (0x0600, 0x06FF),   # Urdu (Arabic script)
+    "ks": (0x0600, 0x06FF),   # Kashmiri (Arabic script)
+    "sd": (0x0560, 0x058F),   # Sindhi (Extended Arabic - also uses Devanagari)
     "mni": (0xABC0, 0xABFF),  # Meitei (Manipuri)
     "sat": (0x1C50, 0x1C7F),  # Ol Chiki (Santali)
     "brx": (0x1C00, 0x1C4F),  # Devanagari (Bodo uses Devanagari)
@@ -78,6 +80,49 @@ class CallTranslatorProvider(TranslationProvider):
         except Exception as e:
             logger.error("Translation failed", error=str(e))
         return None
+
+
+class GoogleTranslationProvider(TranslationProvider):
+    """Free neural translation via Google's public web endpoint (no API key)."""
+
+    ENDPOINT = "https://translate.googleapis.com/translate_a/single"
+
+    def __init__(self):
+        self.client = httpx.AsyncClient(
+            timeout=15.0,
+            headers={"User-Agent": "Mozilla/5.0 (ClearSpeak)"},
+        )
+
+    async def translate(
+        self,
+        text: str,
+        source_language: str,
+        target_language: str
+    ) -> Optional[str]:
+        """Translate text using Google's public translation endpoint."""
+        if source_language == target_language:
+            return text
+        try:
+            response = await self.client.get(
+                self.ENDPOINT,
+                params={
+                    "client": "gtx",
+                    "sl": source_language or "auto",
+                    "tl": target_language,
+                    "dt": "t",
+                    "q": text,
+                },
+            )
+            if response.status_code != 200:
+                logger.warning("Google translation HTTP error", status=response.status_code)
+                return None
+            data = response.json()
+            segments = data[0] or []
+            translated = "".join(seg[0] for seg in segments if seg and seg[0])
+            return translated or None
+        except Exception as e:
+            logger.warning("Google translation failed", error=str(e))
+            return None
 
 
 class LocalTranslationProvider(TranslationProvider):
@@ -169,7 +214,7 @@ class LocalTranslationProvider(TranslationProvider):
         source_language: str,
         target_language: str
     ) -> Optional[str]:
-        """Translate text using local dictionary."""
+        """Translate text using local dictionary. Returns None when unknown."""
         text_lower = text.lower().strip()
         
         # Check if we have a translation
@@ -178,8 +223,8 @@ class LocalTranslationProvider(TranslationProvider):
             if target_language in translations:
                 return translations[target_language]
         
-        # If no translation found, return original text
-        return text
+        # No dictionary entry — let the next provider in the chain try
+        return None
 
 
 class OpenAITranslationProvider(TranslationProvider):
@@ -281,18 +326,33 @@ class TranslationManager:
     def __init__(self, use_remote: bool = False):
         self.providers = {
             "local": LocalTranslationProvider(),
+            "google": GoogleTranslationProvider(),
         }
         
         # Add OpenAI provider if API key is available
+        configured = "local"
         try:
             from backend.config import get_settings
             settings = get_settings()
             if settings.openai_api_key:
                 self.providers["openai"] = OpenAITranslationProvider(settings.openai_api_key)
+            configured = settings.translation_provider or "local"
         except Exception:
             pass
         
-        self.default_provider = "openai" if "openai" in self.providers else "local"
+        if configured not in self.providers:
+            configured = "local"
+        
+        # Provider chain: configured provider first, then free fallbacks so a
+        # missing/failing key never leaves translation returning nothing.
+        # (OpenAI is only used when explicitly configured — it costs money.)
+        chain = [configured]
+        for name in ("google", "local"):
+            if name not in chain and name in self.providers:
+                chain.append(name)
+        
+        self.default_provider = configured
+        self._chain = chain
         self._user_languages: Dict[str, str] = {}  # user_id -> preferred language
         self._cache: Dict[str, str] = {}
         
@@ -402,11 +462,13 @@ class TranslationManager:
         if cache_key in self._cache:
             return self._cache[cache_key]
         
-        # Get provider
-        provider_name = provider or self.default_provider
-        translation_provider = self.providers.get(provider_name)
-        if not translation_provider:
-            logger.error("Translation provider not found", provider=provider_name)
+        # Get provider chain (explicit provider request wins)
+        if provider:
+            chain = [provider]
+        else:
+            chain = self._chain
+        if not any(name in self.providers for name in chain):
+            logger.error("Translation provider not found", provider=chain)
             return None
         
         # Auto-detect source language if not specified
@@ -416,14 +478,17 @@ class TranslationManager:
         if src_lang == target_language:
             return text
         
-        # Translate
-        translated = await translation_provider.translate(text, src_lang, target_language)
+        # Try each provider until one produces a translation
+        for provider_name in chain:
+            translation_provider = self.providers.get(provider_name)
+            if not translation_provider:
+                continue
+            translated = await translation_provider.translate(text, src_lang, target_language)
+            if translated and translated.strip():
+                self._cache[cache_key] = translated
+                return translated
         
-        # Cache result
-        if translated:
-            self._cache[cache_key] = translated
-        
-        return translated
+        return None
     
     async def detect_language(self, text: str) -> str:
         """

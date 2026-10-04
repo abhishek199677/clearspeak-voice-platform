@@ -228,10 +228,23 @@ export default function VoiceChat() {
   const mediaRef = useRef(null)
   const messagesEndRef = useRef(null)
   const audioContextRef = useRef(null)
+  const micContextRef = useRef(null)
+  const processorRef = useRef(null)
+  const audioQueueRef = useRef([])
+  const audioPlayingRef = useRef(false)
 
   useEffect(() => {
-    checkBackend()
+    let cancelled = false
+    let timer
+    async function poll() {
+      await checkBackend()
+      if (!cancelled) timer = setTimeout(poll, 5000)
+    }
+    poll()
     return () => {
+      cancelled = true
+      clearTimeout(timer)
+      stopMic(false)
       if (wsRef.current) wsRef.current.close()
       if (mediaRef.current) mediaRef.current.getTracks().forEach(t => t.stop())
     }
@@ -262,8 +275,10 @@ export default function VoiceChat() {
       const wsBase = getWsBaseUrl()
       const ws = new WebSocket(`${wsBase}/ws/${sess.session_id}?user_id=${newUserId}`)
       wsRef.current = ws
+      let opened = false
 
       ws.onopen = () => {
+        opened = true
         setConnected(true)
         setStatus('ready')
         
@@ -283,6 +298,13 @@ export default function VoiceChat() {
         addMessage('system', pipelineMode === 'translation' 
           ? `Translating: ${getLangName(sourceLanguage)} → ${getLangName(targetLanguage)}`
           : 'AI assistant ready')
+      }
+
+      ws.onerror = () => {
+        if (!opened) {
+          setStatus('error')
+          addMessage('system', 'Connection error — is the backend server running on port 8000?')
+        }
       }
 
       ws.onmessage = (event) => {
@@ -311,6 +333,7 @@ export default function VoiceChat() {
           
           if (data.type === 'audio') playAudio(data.audio_data)
           else if (data.type === 'text') addMessage('agent', data.text)
+          else if (data.type === 'error') addMessage('system', data.text)
           else if (data.type === 'transcript') addMessage('transcript', data.text, data.language)
           else if (data.type === 'translation') {
             addMessage('translation', data.text, data.metadata)
@@ -330,15 +353,17 @@ export default function VoiceChat() {
       ws.onclose = () => {
         setConnected(false)
         setStatus('disconnected')
-        addMessage('system', 'Disconnected')
+        if (opened) addMessage('system', 'Disconnected')
       }
-    } catch {
+    } catch (err) {
       setStatus('error')
-      addMessage('system', 'Failed to connect')
+      addMessage('system', `Failed to connect${err?.message ? `: ${err.message}` : ''}`)
     }
   }
 
   async function endSession() {
+    stopMic(false)
+    audioQueueRef.current = []
     if (wsRef.current) wsRef.current.close()
     if (session) await closeSession(session.session_id)
     setConnected(false)
@@ -352,27 +377,48 @@ export default function VoiceChat() {
     return ALL_LANGUAGES.find(l => l.code === code)?.name || code
   }
 
+  function stopMic(flush = true) {
+    if (processorRef.current) {
+      processorRef.current.onaudioprocess = null
+      try { processorRef.current.disconnect() } catch { /* already disconnected */ }
+      processorRef.current = null
+    }
+    if (micContextRef.current) {
+      try { micContextRef.current.close() } catch { /* already closed */ }
+      micContextRef.current = null
+    }
+    if (mediaRef.current) {
+      mediaRef.current.getTracks().forEach(t => t.stop())
+      mediaRef.current = null
+    }
+    // Ask the backend to transcribe whatever is left in the mic buffer
+    if (flush && wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'flush_audio' }))
+    }
+  }
+
   async function toggleRecording() {
     if (recording) {
-      if (mediaRef.current) {
-        mediaRef.current.getTracks().forEach(t => t.stop())
-        mediaRef.current = null
-      }
+      stopMic(true)
       setRecording(false)
       setStatus('ready')
       return
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+      })
       mediaRef.current = stream
       
-      audioContextRef.current = new AudioContext({ sampleRate: 16000 })
-      const source = audioContextRef.current.createMediaStreamSource(stream)
-      const processor = audioContextRef.current.createScriptProcessor(4096, 1, 1)
+      const micContext = new AudioContext({ sampleRate: 16000 })
+      micContextRef.current = micContext
+      const source = micContext.createMediaStreamSource(stream)
+      const processor = micContext.createScriptProcessor(4096, 1, 1)
+      processorRef.current = processor
 
       source.connect(processor)
-      processor.connect(audioContextRef.current.destination)
+      processor.connect(micContext.destination)
 
       processor.onaudioprocess = (e) => {
         if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -414,29 +460,36 @@ export default function VoiceChat() {
   }
 
   function playBinaryAudio(audioData) {
+    // Queue playback so consecutive responses never overlap each other
+    audioQueueRef.current.push(audioData)
+    drainAudioQueue()
+  }
+
+  function drainAudioQueue() {
+    if (audioPlayingRef.current || audioQueueRef.current.length === 0) return
+    audioPlayingRef.current = true
     setStatus('speaking')
-    
-    // Create blob from audio data and play via Audio element
+
+    const audioData = audioQueueRef.current.shift()
     // Edge TTS outputs MP3, so we play it as a media file
     const blob = new Blob([audioData], { type: 'audio/mpeg' })
     const url = URL.createObjectURL(blob)
     const audio = new Audio(url)
-    
-    audio.onended = () => {
+
+    const finished = () => {
       URL.revokeObjectURL(url)
-      setStatus('ready')
+      audioPlayingRef.current = false
+      if (audioQueueRef.current.length > 0) {
+        drainAudioQueue()
+      } else {
+        setStatus('ready')
+      }
     }
+
+    audio.onended = finished
+    audio.onerror = finished
     
-    audio.onerror = (e) => {
-      console.error('Audio playback error:', e)
-      URL.revokeObjectURL(url)
-      setStatus('ready')
-    }
-    
-    audio.play().catch(e => {
-      console.error('Audio play failed:', e)
-      setStatus('ready')
-    })
+    audio.play().catch(finished)
   }
 
   async function playAudio(base64Data) {
@@ -666,10 +719,18 @@ export default function VoiceChat() {
             <div className="flex items-center justify-between mb-10 pb-6 border-b border-white/[0.06]">
               <div className="flex items-center gap-3">
                 <div className={`w-2.5 h-2.5 rounded-full ${
-                  backendStatus === 'connected' ? 'bg-green-500 animate-pulse' : 'bg-red-500'
+                  backendStatus === 'connected'
+                    ? 'bg-green-500 animate-pulse'
+                    : backendStatus === 'checking'
+                      ? 'bg-amber-400 animate-pulse'
+                      : 'bg-red-500'
                 }`} />
                 <span className="text-[13px] text-gray-400 font-medium">
-                  {backendStatus === 'connected' ? 'System Online' : 'System Offline'}
+                  {backendStatus === 'connected'
+                    ? 'System Online'
+                    : backendStatus === 'checking'
+                      ? 'Connecting…'
+                      : 'System Offline'}
                 </span>
               </div>
               <div className="flex items-center gap-4">

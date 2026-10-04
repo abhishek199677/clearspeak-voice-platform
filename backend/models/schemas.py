@@ -30,10 +30,13 @@ class VoiceMessage(BaseModel):
     """WebSocket message for voice streaming."""
     type: str = Field(..., description="Message type: audio, text, control")
     session_id: Optional[str] = None
-    audio_data: Optional[str] = None  # Base64 encoded
+    audio_data: Optional[str] = None  # Base64/HEX encoded audio
     text: Optional[str] = None
     format: AudioFormat = AudioFormat.PCM
     sample_rate: int = 16000
+    confidence: Optional[float] = None
+    language: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 

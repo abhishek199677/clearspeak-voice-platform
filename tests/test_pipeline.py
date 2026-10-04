@@ -71,6 +71,8 @@ class MockTTS(TTSProvider):
 # Mock LLM Provider
 class MockLLM(LLMProvider):
     def __init__(self):
+        # Initializes tool_registry with the default tool set (no network calls)
+        super().__init__(api_key="test-key", model="test-model", temperature=0.0, max_tokens=50)
         self.initialized = False
         
     async def initialize(self):

@@ -3,7 +3,7 @@ import { useRef, useState } from 'react'
 import { Mail, ArrowRight, Globe, MessageCircle, Hash, Video, Users } from 'lucide-react'
 
 const footerLinks = {
-  Product: ['Voice Agents', 'Speech to Text', 'Text to Speech', 'Translations', 'Analytics', 'Voice Cloning', 'Live Streaming'],
+  Product: ['Voice Agents', 'Speech to Text', 'Text to Speech', 'Translations', 'Analytics', 'Voice Cloning', 'Live Streaming', 'Sign Language', 'Spatial Awareness', 'Product Demo'],
   'Use Cases': ['Customer Support', 'Sales', 'Marketing', 'Onboarding', 'Healthcare', 'Education', 'Enterprise Solutions'],
   Resources: ['Documentation', 'API Reference', 'Blog', 'Case Studies', 'Whitepapers', 'Webinars', 'Status', 'Developer Hub'],
   Company: ['About Us', 'Careers', 'Partners', 'News', 'Investor Relations', 'Enterprise'],
@@ -103,6 +103,8 @@ export default function Footer() {
               if (lower.includes('speech') || lower.includes('translation')) return '#/speech'
               if (lower.includes('analytics')) return '#/analytics'
               if (lower.includes('stream')) return '#/live'
+              if (lower.includes('sign') || lower.includes('spatial')) return '#/accessibility'
+              if (lower.includes('demo')) return '#/demo'
               if (lower.includes('enterprise')) return '#/enterprise'
               if (lower.includes('support') || lower.includes('chat')) return '#/chat'
               if (lower.includes('faq')) return '#/faq'

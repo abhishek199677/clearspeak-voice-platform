@@ -18,7 +18,9 @@ import ChatInterface from './components/ChatInterface'
 import CallsInterface from './components/CallsInterface'
 import LiveStreams from './components/LiveStreams'
 import SignLanguage from './components/SignLanguage'
+import SpatialAwareness from './components/SpatialAwareness'
 import ToDoZeeAI from './components/ToDoZeeAI'
+import DemoVideo from './components/DemoVideo'
 import Dashboard from './components/Dashboard'
 import BusinessAnalytics from './components/BusinessAnalytics'
 import Pricing from './components/Pricing'
@@ -31,6 +33,7 @@ import AIConversations from './components/AIConversations'
 import EnterpriseSecurity from './components/EnterpriseSecurity'
 import FAQ from './components/FAQ'
 import AccordionGenerativeDemo from './components/AccordionGenerativeDemo'
+import DemoTestimonialsVerticalMarquee from './components/DemoTestimonialsVerticalMarquee'
 import StudioPage from './components/studio/StudioPage'
 
 
@@ -110,7 +113,22 @@ const pages = {
       <SignLanguage />
     </>
   ),
-  // 06 Analytics
+  // 06 Accessibility (sign language + spatial awareness)
+  '/accessibility': (
+    <>
+      <SignLanguage />
+      <Div />
+      <SpatialAwareness />
+    </>
+  ),
+  '/spatial': (
+    <>
+      <SignLanguage />
+      <Div />
+      <SpatialAwareness />
+    </>
+  ),
+  // 07 Analytics
   '/analytics': (
     <>
       <Dashboard />
@@ -126,6 +144,8 @@ const pages = {
     </>
   ),
   '/tasks': <ToDoZeeAI />,
+  // 08 Product demo video
+  '/demo': <DemoVideo />,
   '/pricing': <Pricing />,
   '/security': <EnterpriseSecurity />,
   '/compliance': <EnterpriseSecurity />,
@@ -133,6 +153,11 @@ const pages = {
   '/faq-demo': (
     <div className="pt-24 pb-20">
       <AccordionGenerativeDemo />
+    </div>
+  ),
+  '/testimonials': (
+    <div className="pt-24 pb-10">
+      <DemoTestimonialsVerticalMarquee />
     </div>
   ),
   '/enterprise': (

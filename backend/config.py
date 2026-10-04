@@ -128,6 +128,17 @@ class Settings(BaseSettings):
     cors_origins: list = Field(default=["*"], env="CORS_ORIGINS")
     https_redirect: bool = Field(default=False, env="HTTPS_REDIRECT")
     
+    @field_validator("allowed_hosts", "cors_origins", mode="before")
+    @classmethod
+    def parse_string_list(cls, v):
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                return [item.strip() for item in v.split(",") if item.strip()]
+        return v
+
+    
     # WebRTC (Future)
     webrtc_enabled: bool = Field(default=False, env="WEBRTC_ENABLED")
     webrtc_turn_url: Optional[str] = Field(default=None, env="WEBRTC_TURN_URL")

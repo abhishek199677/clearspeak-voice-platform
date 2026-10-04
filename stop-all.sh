@@ -33,8 +33,8 @@ if [ -f "$LOG_DIR/frontend.pid" ]; then
 fi
 
 # Fallback Vite ports cleanup
-lsof -ti:3000 -ti:3001 | xargs kill -9 2>/dev/null || true
-echo "✓ Frontend server stopped (ports 3000 & 3001 freed)"
+lsof -ti:5173 -ti:3000 -ti:3001 | xargs kill -9 2>/dev/null || true
+echo "✓ Frontend server stopped (ports 5173, 3000 & 3001 freed)"
 
 echo "=========================================================="
 echo " All ClearSpeak servers have been stopped."

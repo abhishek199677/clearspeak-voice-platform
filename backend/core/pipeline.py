@@ -157,12 +157,12 @@ class VoicePipeline:
         await self.sessions.update_session_state(session_id, SessionState.LISTENING)
         
         try:
-            # Step 1: ASR - Convert audio to text
+            # Step 1: ASR - convert audio to text (Whisper auto-detects the language)
             transcripts = []
             async for transcript in self.asr.transcribe_stream(
                 audio_stream,
                 session_id,
-                session.language
+                "auto"
             ):
                 if transcript.is_final and transcript.transcript.strip():
                     transcripts.append(transcript)
@@ -170,7 +170,8 @@ class VoicePipeline:
                         type="transcript",
                         session_id=session_id,
                         text=transcript.transcript,
-                        confidence=transcript.confidence
+                        confidence=transcript.confidence,
+                        language=transcript.language
                     )
             
             if not transcripts:
@@ -180,25 +181,27 @@ class VoicePipeline:
             # Combine transcripts
             user_text = " ".join(t.transcript for t in transcripts)
             
-            # Step 2: Detect user's language and translate if needed
+            # Step 2: Detect the user's language from the transcript and
+            # translate to English for the LLM when needed
             user_language = session.language or "en"
             text_for_llm = user_text
             
-            if self.translation_manager and user_language != "en":
+            if self.translation_manager:
                 detected_lang = await self.translation_manager.detect_language(user_text)
-                if detected_lang and detected_lang != user_language:
+                if detected_lang and detected_lang != "en":
                     user_language = detected_lang
                 
-                text_for_llm = await self.translation_manager.translate(
-                    user_text, "en", user_language
-                ) or user_text
-                
-                logger.info(
-                    "Translated user input",
-                    session_id=session_id,
-                    source_lang=user_language,
-                    translated=text_for_llm[:100]
-                )
+                if user_language != "en":
+                    text_for_llm = await self.translation_manager.translate(
+                        user_text, "en", user_language
+                    ) or user_text
+                    
+                    logger.info(
+                        "Translated user input",
+                        session_id=session_id,
+                        source_lang=user_language,
+                        translated=text_for_llm[:100]
+                    )
             
             # Add user message to history
             await self.sessions.add_message(
@@ -464,9 +467,9 @@ class VoicePipeline:
             user_language = session.language or "en"
             text_for_llm = text
             
-            if self.translation_manager and user_language != "en":
+            if self.translation_manager:
                 detected_lang = await self.translation_manager.detect_language(text)
-                if detected_lang and detected_lang != user_language:
+                if detected_lang and detected_lang != "en":
                     user_language = detected_lang
                 
                 if user_language != "en":
