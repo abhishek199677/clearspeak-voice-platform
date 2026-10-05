@@ -1,13 +1,59 @@
 import { motion, useInView } from 'framer-motion'
 import { useRef, useState } from 'react'
-import { Mail, ArrowRight, Globe, MessageCircle, Hash, Video, Users } from 'lucide-react'
+import { Mail, ArrowRight, Globe, MessageCircle, Hash, Video, Users, ExternalLink } from 'lucide-react'
+import { getApiBaseUrl } from '@/api/platform'
 
+// Every footer link points at a real route. Product items map to their product
+// pages; everything else renders the content page in src/data/footerPages.js.
 const footerLinks = {
-  Product: ['Voice Agents', 'Speech to Text', 'Text to Speech', 'Translations', 'Analytics', 'Voice Cloning', 'Live Streaming', 'Sign Language', 'Spatial Awareness', 'Product Demo'],
-  'Use Cases': ['Customer Support', 'Sales', 'Marketing', 'Onboarding', 'Healthcare', 'Education', 'Enterprise Solutions'],
-  Resources: ['Documentation', 'API Reference', 'Blog', 'Case Studies', 'Whitepapers', 'Webinars', 'Status', 'Developer Hub'],
-  Company: ['About Us', 'Careers', 'Partners', 'News', 'Investor Relations', 'Enterprise'],
-  Legal: ['Privacy Policy', 'Terms of Service', 'Cookie Policy', 'GDPR', 'Security', 'Compliance', 'SOC 2'],
+  Product: [
+    { label: 'Voice Agents', href: '#/agents' },
+    { label: 'Speech to Text', href: '#/speech' },
+    { label: 'Text to Speech', href: '#/voice' },
+    { label: 'Translations', href: '#/speech-to-speech' },
+    { label: 'Analytics', href: '#/analytics' },
+    { label: 'Voice Cloning', href: '#/clone' },
+    { label: 'Live Streaming', href: '#/live' },
+    { label: 'Sign Language', href: '#/accessibility' },
+    { label: 'Spatial Awareness', href: '#/spatial' },
+    { label: 'Product Demo', href: '#/demo' },
+  ],
+  'Use Cases': [
+    { label: 'Customer Support', href: '#/use-cases/customer-support' },
+    { label: 'Sales', href: '#/use-cases/sales' },
+    { label: 'Marketing', href: '#/use-cases/marketing' },
+    { label: 'Onboarding', href: '#/use-cases/onboarding' },
+    { label: 'Healthcare', href: '#/use-cases/healthcare' },
+    { label: 'Education', href: '#/use-cases/education' },
+    { label: 'Enterprise Solutions', href: '#/enterprise' },
+  ],
+  Resources: [
+    { label: 'Documentation', href: '#/resources/documentation' },
+    { label: 'API Reference', href: `${getApiBaseUrl()}/docs`, external: true },
+    { label: 'Blog', href: '#/resources/blog' },
+    { label: 'Case Studies', href: '#/resources/case-studies' },
+    { label: 'Whitepapers', href: '#/resources/whitepapers' },
+    { label: 'Webinars', href: '#/resources/webinars' },
+    { label: 'Status', href: '#/resources/status' },
+    { label: 'Developer Hub', href: '#/resources/developer-hub' },
+  ],
+  Company: [
+    { label: 'About Us', href: '#/company/about' },
+    { label: 'Careers', href: '#/company/careers' },
+    { label: 'Partners', href: '#/company/partners' },
+    { label: 'News', href: '#/company/news' },
+    { label: 'Investor Relations', href: '#/company/investor-relations' },
+    { label: 'Enterprise', href: '#/enterprise' },
+  ],
+  Legal: [
+    { label: 'Privacy Policy', href: '#/legal/privacy-policy' },
+    { label: 'Terms of Service', href: '#/legal/terms-of-service' },
+    { label: 'Cookie Policy', href: '#/legal/cookie-policy' },
+    { label: 'GDPR', href: '#/legal/gdpr' },
+    { label: 'Security', href: '#/security' },
+    { label: 'Compliance', href: '#/compliance' },
+    { label: 'SOC 2', href: '#/legal/soc-2' },
+  ],
 }
 
 const socialLinks = [
@@ -81,8 +127,8 @@ export default function Footer() {
           </motion.div>
         </motion.div>
 
-        <div className="grid md:grid-cols-4 gap-10 mb-14">
-          <div className="md:col-span-1">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-8 gap-y-10 mb-14">
+          <div>
             <div className="flex items-center gap-2.5 mb-4">
               <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#6C3CE1] to-[#9B6DFF] flex items-center justify-center">
                 <span className="text-white font-bold text-sm">C</span>
@@ -94,38 +140,26 @@ export default function Footer() {
             </p>
           </div>
 
-          {Object.entries(footerLinks).map(([category, links]) => {
-            const getFooterHref = (item) => {
-              const lower = item.toLowerCase()
-              if (lower.includes('soc') || lower.includes('security') || lower.includes('gdpr') || lower.includes('compliance') || lower.includes('privacy') || lower.includes('terms')) return '#/security'
-              if (lower.includes('clone')) return '#/clone'
-              if (lower.includes('agent')) return '#/calls'
-              if (lower.includes('speech') || lower.includes('translation')) return '#/speech'
-              if (lower.includes('analytics')) return '#/analytics'
-              if (lower.includes('stream')) return '#/live'
-              if (lower.includes('sign') || lower.includes('spatial')) return '#/accessibility'
-              if (lower.includes('demo')) return '#/demo'
-              if (lower.includes('enterprise')) return '#/enterprise'
-              if (lower.includes('support') || lower.includes('chat')) return '#/chat'
-              if (lower.includes('faq')) return '#/faq'
-              return '#/features'
-            }
-
-            return (
-              <div key={category}>
-                <h4 className="font-semibold text-[13px] text-white mb-4 uppercase tracking-wider">{category}</h4>
-                <ul className="space-y-2.5">
-                  {links.map((link) => (
-                    <li key={link}>
-                      <a href={getFooterHref(link)} className="text-[13px] text-gray-500 hover:text-white transition-colors duration-200">
-                        {link}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )
-          })}
+          {Object.entries(footerLinks).map(([category, links]) => (
+            <div key={category}>
+              <h4 className="font-semibold text-[13px] text-white mb-4 uppercase tracking-wider">{category}</h4>
+              <ul className="space-y-2.5">
+                {links.map((link) => (
+                  <li key={link.label}>
+                    <a
+                      href={link.href}
+                      target={link.external ? '_blank' : undefined}
+                      rel={link.external ? 'noreferrer' : undefined}
+                      className="text-[13px] text-gray-500 hover:text-white transition-colors duration-200 inline-flex items-center gap-1"
+                    >
+                      {link.label}
+                      {link.external && <ExternalLink className="w-3 h-3 shrink-0" />}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
 
         <div className="border-t border-white/[0.06] pt-7 flex flex-col md:flex-row justify-between items-center gap-4">

@@ -35,6 +35,8 @@ import FAQ from './components/FAQ'
 import AccordionGenerativeDemo from './components/AccordionGenerativeDemo'
 import DemoTestimonialsVerticalMarquee from './components/DemoTestimonialsVerticalMarquee'
 import StudioPage from './components/studio/StudioPage'
+import InfoPage from './components/InfoPage'
+import { INFO_PAGES } from './data/footerPages'
 
 
 const Div = () => <div className="section-divider" />
@@ -201,7 +203,9 @@ export default function App() {
     <div className="min-h-screen bg-[#0A0A0F]">
       <ScrollProgress />
       <Navbar />
-      <main>{pages[route] ?? pages['/']}</main>
+      <main>
+        {pages[route] ?? (INFO_PAGES[route] ? <InfoPage {...INFO_PAGES[route]} /> : pages['/'])}
+      </main>
       <Footer />
       <BackToTop />
       <AudioGuidance />

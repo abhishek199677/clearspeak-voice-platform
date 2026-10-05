@@ -60,6 +60,10 @@
   --color-border: rgba(255, 255, 255, 0.1);
   --color-input: rgba(255, 255, 255, 0.1);
   --color-ring: #6C3CE1;
+
+  /* ui/marquee.tsx — keyframes are declared in plain CSS further down */
+  --animate-marquee: marquee var(--duration, 40s) linear infinite;
+  --animate-marquee-vertical: marquee-vertical var(--duration, 40s) linear infinite;
 }
 
 html {
@@ -220,6 +224,10 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .vertical-marquee {
     overflow-y: auto;
+  }
+
+  [data-slot="marquee"] > div {
+    animation: none;
   }
 }
 

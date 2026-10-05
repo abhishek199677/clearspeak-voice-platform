@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import { motion, useScroll, useTransform, useInView, AnimatePresence } from 'framer-motion'
-import { ArrowUpRight, ArrowRight, Plus, Play, Sparkles } from 'lucide-react'
+import { ArrowUpRight, ArrowRight, Plus, Play, Sparkles, Star } from 'lucide-react'
 import {
   Accordion,
   AccordionItem,
@@ -8,6 +8,9 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion-generative-utils/accordion'
 import DemoVideo from '@/components/DemoVideo'
+import { Marquee } from '@/components/ui/marquee'
+import { testimonials } from '@/data/testimonials'
+import { cn } from '@/lib/utils'
 
 const EASE = [0.16, 1, 0.3, 1]
 
@@ -58,24 +61,6 @@ const stats = [
   { to: 200, label: 'Global languages', suffix: '+' },
   { to: 300, label: 'Milliseconds latency', prefix: '<', suffix: 'ms' },
   { to: 1.4, decimals: 1, label: 'Billion people served', suffix: 'B+' },
-]
-
-const testimonials = [
-  {
-    quote: 'Our support floor went from three language teams to one. Customers hear their own language, agents hear theirs.',
-    who: 'VP, Customer Support',
-    where: 'Indian fintech',
-  },
-  {
-    quote: 'We cloned the clinic\u2019s front-desk voice once. Now every appointment reminder goes out in the patient\u2019s own language.',
-    who: 'Head of Operations',
-    where: 'Multi-city hospital network',
-  },
-  {
-    quote: 'Latency was the dealbreaker everywhere else. Under 300ms is the difference between a conversation and a delay.',
-    who: 'Engineering Lead',
-    where: 'Livestream platform',
-  },
 ]
 
 const faqs = [
@@ -282,12 +267,25 @@ function StudioHero() {
               className="mt-10 flex flex-wrap items-center gap-4"
             >
               <motion.a
-                href="#/speech"
+                href="#demo"
+                onClick={(e) => {
+                  e.preventDefault()
+                  const el = document.getElementById('demo')
+                  if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                    // Dispatch direct unmuted play event within user gesture callstack
+                    window.dispatchEvent(
+                      new CustomEvent('clearspeak:play-demo', { detail: { unmuted: true } })
+                    )
+                  } else {
+                    window.location.hash = '#/demo'
+                  }
+                }}
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
-                className="inline-flex items-center gap-2.5 px-7 py-3.5 bg-white text-[#08080D] rounded-full text-[14px] font-medium hover:shadow-[0_16px_40px_rgba(255,255,255,0.18)] transition-shadow"
+                className="inline-flex items-center gap-2.5 px-7 py-3.5 bg-white text-[#08080D] rounded-full text-[14px] font-medium hover:shadow-[0_16px_40px_rgba(255,255,255,0.18)] transition-shadow cursor-pointer"
               >
-                <span className="w-2 h-2 rounded-full bg-[#6C3CE1]" />
+                <span className="w-2 h-2 rounded-full bg-[#6C3CE1] animate-pulse" />
                 Listen to a demo
               </motion.a>
               <motion.a
@@ -520,29 +518,84 @@ function StatsSection() {
   )
 }
 
-function TestimonialsSection() {
-  return (
-    <section className="py-24 sm:py-36 px-5 sm:px-8 max-w-7xl mx-auto">
-      <SectionHead index="05" kicker="Words">
-        <Reveal>From the people</Reveal>
-        <Reveal delay={0.1}>who stopped translating.</Reveal>
-      </SectionHead>
+function testimonialInitials(name) {
+  return name
+    .replace(/^(Dr\.|Mr\.|Ms\.|Mrs\.)\s+/i, '')
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase()
+}
 
-      <div className="grid md:grid-cols-3 gap-6">
-        {testimonials.map((t, i) => (
-          <FadeUp key={t.who} delay={i * 0.12}>
-            <figure className="h-full flex flex-col justify-between p-7 sm:p-9 rounded-[20px] bg-white/[0.02] border border-white/[0.07] hover:border-white/[0.14] hover:bg-white/[0.04] transition-all duration-400">
-              <blockquote className="font-light text-[17px] sm:text-[19px] leading-relaxed text-white/85">
-                <span className="text-[#FF6B35] mr-1">&ldquo;</span>
-                {t.quote}
-                <span className="text-[#FF6B35] ml-1">&rdquo;</span>
-              </blockquote>
-              <figcaption className="mt-8 pt-5 border-t border-white/[0.08]">
-                <div className="text-[13px] text-white">{t.who}</div>
-                <div className="text-[12px] text-gray-500 mt-0.5">{t.where}</div>
-              </figcaption>
-            </figure>
-          </FadeUp>
+function TestimonialCard({ t }) {
+  return (
+    <figure className="w-[300px] sm:w-[380px] shrink-0 rounded-[20px] bg-white/[0.02] border border-white/[0.07] p-6 transition-colors duration-300 hover:border-white/[0.16] hover:bg-white/[0.04]">
+      <div className="flex items-center gap-0.5" aria-label={`${t.rating} out of 5 stars`}>
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Star
+            key={i}
+            aria-hidden="true"
+            strokeWidth={2}
+            className={cn(
+              'size-3.5',
+              i < t.rating ? 'fill-[#FF6B35] text-[#FF6B35]' : 'text-white/20',
+            )}
+          />
+        ))}
+      </div>
+      <blockquote className="mt-4 font-light text-[15px] leading-relaxed text-white/85">
+        <span className="text-[#FF6B35] mr-0.5">&ldquo;</span>
+        {t.quote}
+        <span className="text-[#FF6B35] ml-0.5">&rdquo;</span>
+      </blockquote>
+      <figcaption className="mt-5 pt-4 border-t border-white/[0.08] flex items-center gap-3">
+        <div
+          aria-hidden="true"
+          className={cn(
+            'size-9 shrink-0 rounded-full bg-gradient-to-br flex items-center justify-center text-[12px] font-semibold text-white',
+            t.gradient,
+          )}
+        >
+          {testimonialInitials(t.name)}
+        </div>
+        <div className="min-w-0">
+          <div className="text-[13px] text-white truncate">{t.name}</div>
+          <div className="text-[12px] text-gray-500 truncate">
+            {t.role}, {t.org}
+          </div>
+        </div>
+      </figcaption>
+    </figure>
+  )
+}
+
+function TestimonialsSection() {
+  const rows = [testimonials.slice(0, 6), testimonials.slice(6)]
+
+  return (
+    <section className="py-24 sm:py-36 relative overflow-hidden">
+      <div className="max-w-7xl mx-auto px-5 sm:px-8">
+        <SectionHead index="05" kicker="Words">
+          <Reveal>From the people</Reveal>
+          <Reveal delay={0.1}>who stopped translating.</Reveal>
+        </SectionHead>
+      </div>
+
+      <div className="space-y-4 [mask-image:linear-gradient(to_right,transparent,black_6%,black_94%,transparent)] [-webkit-mask-image:linear-gradient(to_right,transparent,black_6%,black_94%,transparent)]">
+        {rows.map((row, i) => (
+          <Marquee
+            key={i}
+            reverse={i % 2 === 1}
+            pauseOnHover
+            repeat={4}
+            ariaLabel="What customers say about ClearSpeak"
+            className="[--duration:60s]"
+          >
+            {row.map((t) => (
+              <TestimonialCard key={t.name} t={t} />
+            ))}
+          </Marquee>
         ))}
       </div>
     </section>

@@ -232,6 +232,11 @@ export default function VoiceChat() {
   const processorRef = useRef(null)
   const audioQueueRef = useRef([])
   const audioPlayingRef = useRef(false)
+  const langRef = useRef({ source: 'hi', target: 'ta' })
+
+  useEffect(() => {
+    langRef.current = { source: sourceLanguage, target: targetLanguage }
+  }, [sourceLanguage, targetLanguage])
 
   useEffect(() => {
     let cancelled = false
@@ -339,7 +344,17 @@ export default function VoiceChat() {
             addMessage('translation', data.text, data.metadata)
           }
           else if (data.type === 'mode_set') {
-            addMessage('system', `Mode set to: ${data.mode}`)
+            const mode = data.mode === 'translation' ? 'translation' : 'agent'
+            setPipelineMode(mode)
+            if (mode === 'translation') {
+              setTranslationEnabled(true)
+              ws.send(JSON.stringify({
+                type: 'set_languages',
+                source_language: langRef.current.source,
+                target_language: langRef.current.target
+              }))
+            }
+            addMessage('system', `Mode set to: ${mode === 'translation' ? 'Translation' : 'Agent'}`)
           }
           else if (data.type === 'languages_set') {
             addMessage('system', `Languages: ${getLangName(data.source_language)} → ${getLangName(data.target_language)}`)

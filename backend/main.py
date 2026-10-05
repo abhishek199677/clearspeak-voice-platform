@@ -847,6 +847,156 @@ async def get_indic_languages():
     return {"languages": {}}
 
 
+# ─── Demo video narration ───
+
+# ponytail: narration shipped pre-translated — the free Google endpoint 429s, a
+# runtime translate call would randomly narrate English. Refresh these if copy changes.
+DEMO_NARRATION_TEXTS = {
+    "en": "Watch ClearSpeak translate live conversations across 22 Indian languages in real time. Every voice, understood, everywhere.",
+    "hi": "22 भारतीय भाषाओं में लाइव बातचीत का वास्तविक समय में अनुवाद करते हुए क्लियरस्पीक देखें। हर आवाज़, हर जगह समझी जाती है।",
+    "bn": "২২টি ভারতীয় ভাষায় লাইভ কথোপকথনের বাস্তব সময়ে অনুবাদ করতে দেখুন ক্লিয়ারস্পিক। প্রতিটি কণ্ঠস্বর সর্বত্র বোধগম্য।",
+    "ta": "22 இந்திய மொழிகளில் நேரலை உரையாடல்களை நிகழ்நேரத்தில் மொழிபெயர்க்கும் க்ளியர்ஸ்பீக்-ஐக் காணுங்கள். ஒவ்வொரு குரலும் எங்கும் புரிந்துகொள்ளப்படுகிறது.",
+    "te": "22 భారతీయ భాషల్లో ప్రత్యక్ష సంభాషణలను నిజ సమయంలో అనువదిస్తున్న క్లియర్‌స్పీక్‌ను చూడండి. ప్రతి గొంతు అంతటా అర్థమవుతుంది.",
+    "ml": "22 ഇന്ത്യൻ ഭാഷകളിൽ തത്സമയ സംഭാഷണങ്ങൾ വ്യാഖ്യാനിക്കുന്ന ക്ലിയർസ്പീക്ക് കാണൂ. ഓരോ ശബ്ദവും എവിടെയും മനസ്സിലാക്കപ്പെടുന്നു.",
+    "kn": "22 ಭಾರತೀಯ ಭಾಷೆಗಳಲ್ಲಿ ನೇರ ಸಂಭಾಷಣೆಗಳನ್ನು ನೈಜ ಸಮಯದಲ್ಲಿ ಅನುವಾದಿಸುತ್ತಿರುವ ಕ್ಲಿಯರ್‌ಸ್ಪೀಕ್ ನೋಡಿ. ಪ್ರತಿ ಧ್ವನಿಯೂ ಎಲ್ಲೆಡೆ ಅರ್ಥವಾಗುತ್ತದೆ.",
+    "gu": "22 ભારતીય ભાષાઓમાં લાઈવ વાર્તાલાપનું વાસ્તવિક સમયે અનુવાદ કરતાં ક્લિયરસ્પીક જુઓ. દરેક અવાજ સર્વત્ર સમજાય છે.",
+    "mr": "22 भारतीय भाषांत लाइव संवादांचे वेळेवर अनुवाद करताना क्लियरस्पीक पहा. प्रत्येक आवाज ठिकाणी समजली जाते.",
+    "pa": "22 ਭਾਰਤੀ ਭਾਸ਼ਾਵਾਂ ਵਿੱਚ ਲਾਈਵ ਗੱਲਬਾਤ ਦਾ ਰੀਅਲ-ਟਾਈਮ ਅਨੁਵਾਦ ਕਰਦਾ ਕਲੀਅਰਸਪੀਕ ਵੇਖੋ। ਹਰ ਆਵਾਜ਼ ਹਰ ਥਾਂ ਸਮਝੀ ਜਾਂਦੀ ਹੈ।",
+    "ur": "22 ہندوستانی زبانوں میں لائیو گفتگو کا حقیقی وقت میں ترجمہ کرتے ہوئے کلیئر اسپیک دیکھیں۔ ہر آواز ہر جگہ سمجھی جاتی ہے۔",
+    "as": "২২টি ভাৰতীয় ভাষাত লাইভ কথোপকথনৰ প্ৰকৃত সময়ত অনুবাদ কৰি থকা ক্লিয়াৰস্পিক চাওক। প্ৰতিটো কণ্ঠস্বৰ সৰ্বত্ৰ বুজি পোৱা যায়।",
+    "or": "୨୨ଟି ଭାରତୀୟ ଭାଷାରେ ଲାଇଭ୍ କଥାବାର୍ତ୍ତାର ପ୍ରକୃତ ସମୟରେ ଅନୁବାଦ କରୁଥିବା କ୍ଲିୟର୍ସ୍ପିକ୍ ଦେଖନ୍ତୁ। ପ୍ରତିଟି ସ୍ଵର ସର୍ବତ୍ର ବୁଝାପଡ଼େ।",
+    "sa": "२२ भारतीयभाषासु सजीवसंवादस्य वास्तविकसमये अनुवादं कुर्वन्तं क्लियरस्पीकं पश्यत। प्रत्येकः स्वरः सर्वत्र अवगच्छ्यते।",
+    "gom": "22 भारतीय भासांत थें लायव्ह संवादांचो रियल-टायमांत अनुवाद करपी क्लियरस्पीक पळयात. दर एक आवाज सगळ्यांग खरो मुळता.",
+    "doi": "22 भारतीय भाषां विच लाइव गल्लां दा असली समय विच अनुवाद करदे क्लियरस्पीक देखो। हर आवाज हर थां समझी जांदी ऐ।",
+    "mai": "22 भारतीय भाषा मे लाइव बातचीत के रियल टाइम मे अनुवाद करैत अछि क्लियरस्पीक। हर आवाज सब ठाम बुझल जाइत अछि।",
+    "sat": "ᱠᱞᱤᱭᱟᱨᱥᱯᱤᱠ ᱥᱟᱨᱵᱟᱣ ᱡᱟᱦᱟᱸ ᱫᱩᱦᱲᱟᱹ ᱨᱮ ᱞᱟᱭᱤᱵᱽ ᱜᱟᱞᱢᱟᱨᱟᱣ ᱞᱟᱛᱩᱭᱮᱢ ᱢᱮ. ᱢᱮᱱᱟᱜ ᱥᱟᱶ ᱠᱟᱛᱚ ᱠᱮᱞ ᱱᱤᱛᱚᱢ ᱵᱩᱦᱟᱹᱨᱟᱭ ᱢᱮ.",
+    "ks": "22 ہندستانؠ زبانان چھ لایو گوفتگو کا حقیقی وقت چھ ترجمہ کرنہٕ ٹھٲٹھ کلیٖر سپیک دیوُن۔ ہر آواز ہر شے سمجھنہٕ ییوان۔",
+    "mni": "ꯂꯨꯛ ꯂꯣꯟ ꯲꯲ ꯭ꯃꯤꯇꯨꯝ ꯭ꯃꯤꯃꯛ꯭ ꯗꯣꯟꯗꯦ ꯑꯃꯁꯣꯢ ꯃꯨꯜ꯫ꯁꯣꯏ ꯆꯥꯎꯕ ꯃꯤꯇꯩꯂꯣꯟ꯭ ꯊꯛ꯭ꯇꯦꯗꯦ ꯉꯁꯣꯢ ꯈꯤꯃꯥꯛ꯭ꯀꯥ ꯂꯨꯖꯦꯜ꯭ꯁꯛꯇꯣꯢ ꯂꯣꯞꯈꯤ꯫",
+    "brx": "22 भारतीय भाषानि मा बियोरि समयाव अनुवादा दिसा क्लियरस्पीक नोनो। नोनो आवखाया नोनो थायाव माननाय होबाय।",
+    "sd": "22 ھندستاني ٻولين ۾ سڌاري ڳالهائي جي حققي وقت ۾ ترجمو ڪندي كلير اسپيڪ ڏسو. هر آواز هر ٺي سمجھي وڃي آهي.",
+    "ne": "२२ भारतीय भाषाहरूमा लाइभ कुराकानीको वास्तविक समयमा अनुवाद गर्दै क्लियरस्पीक हेर्नुहोस्। हरेक आवाज सबैतिर बुझिन्छ।",
+}
+
+DEMO_NARRATION = DEMO_NARRATION_TEXTS["en"]
+
+# ponytail: Edge ships no voice for ~11 scheduled languages — nearest voice of the
+# same script/region. Upgrade path: a real dubbing model per language.
+DEMO_NARRATION_SPEECH_TEXTS = {
+    "or": "२२ भारतीय भाषारे लाइव कथावार्तार प्रकृत समयरे अनुवाद करथिवा क्लियरस्पीक देखन्तु। प्रतिटि स्वर सर्वत्र बुझापड़े।",
+    "sat": "क्लियरस्पीक सारबाव जाहाँ दुहड़ा रे लाइव गालमाराव लातुयेम मे। मेनाग सांव कातो केल नीतोम बुहाराय मे।",
+    "mni": "২২ ভারতীয় লোলদা লাইভ ৱারী-ৱাতাইগী অশেংবা মতমদা ৱাহন্থোক পীবা ক্লিয়ারস্পীক য়েংশিনবীয়ু।",
+    "pa": "२२ भारती भाषावां विच लाइव गल्लबात दा रीअल-टाइम अनुवाद करदा क्लीअरस्पीक वेखो। हर आवाज़ हर थां समझी जांदी है।",
+}
+
+DEMO_NARRATION_VOICES = {
+    "hi": "hi-IN-SwaraNeural",
+    "bn": "bn-IN-TanishaaNeural",
+    "ta": "ta-IN-PallaviNeural",
+    "te": "te-IN-ShrutiNeural",
+    "ml": "ml-IN-SobhanaNeural",
+    "kn": "kn-IN-SapnaNeural",
+    "gu": "gu-IN-DhwaniNeural",
+    "mr": "mr-IN-AarohiNeural",
+    "ne": "ne-NP-HemkalaNeural",
+    "ur": "ur-IN-GulNeural",
+    "en": "en-IN-NeerjaNeural",
+    "pa": "hi-IN-SwaraNeural",
+    "as": "bn-IN-TanishaaNeural",
+    "mni": "bn-IN-TanishaaNeural",
+    "or": "hi-IN-SwaraNeural",
+    "sat": "hi-IN-SwaraNeural",
+    "sa": "hi-IN-SwaraNeural",
+    "gom": "mr-IN-AarohiNeural",
+    "doi": "hi-IN-SwaraNeural",
+    "mai": "hi-IN-SwaraNeural",
+    "brx": "hi-IN-SwaraNeural",
+    "ks": "ur-IN-GulNeural",
+    "sd": "ur-IN-GulNeural",
+}
+
+
+@app.get("/demo/narration/{lang}")
+@limiter.limit("120/minute")
+async def demo_narration(request: Request, lang: str):
+    """Narrate the demo script in `lang` as mp3 (neural TTS or cached static audio)."""
+    import os
+    from urllib.parse import quote
+    from fastapi.responses import Response
+
+    lang = (lang or "en").lower().split("-")[0]
+    caption_text = DEMO_NARRATION_TEXTS.get(lang, DEMO_NARRATION)
+    speech_text = DEMO_NARRATION_SPEECH_TEXTS.get(lang, caption_text)
+
+    # Check pre-generated or cached static file first for zero-latency instant response
+    cached_candidates = [
+        os.path.join(os.path.dirname(__file__), "..", "frontend-app", "public", "samples", "demo-narration", f"{lang}.mp3"),
+        os.path.join(os.path.dirname(__file__), "..", "frontend-app", "dist", "samples", "demo-narration", f"{lang}.mp3"),
+        os.path.join(os.path.dirname(__file__), "demo_audio", f"{lang}.mp3"),
+    ]
+    for candidate in cached_candidates:
+        if os.path.exists(candidate) and os.path.getsize(candidate) > 1000:
+            try:
+                with open(candidate, "rb") as f:
+                    content = f.read()
+                return Response(
+                    content=content,
+                    media_type="audio/mpeg",
+                    headers={
+                        "X-Demo-Narration-Text": quote(caption_text),
+                        "X-Demo-Narration-Lang": lang,
+                        "Cache-Control": "public, max-age=86400",
+                    },
+                )
+            except Exception as e:
+                logger.warning("Failed reading cached narration audio", candidate=candidate, error=str(e))
+
+    voice = DEMO_NARRATION_VOICES.get(lang, "en-IN-NeerjaNeural")
+    chunks = []
+    try:
+        import edge_tts
+        communicate = edge_tts.Communicate(speech_text, voice)
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                chunks.append(chunk["data"])
+    except Exception as e:
+        logger.warning("Demo narration TTS failed", lang=lang, voice=voice, error=str(e))
+
+    if not chunks:
+        # Fallback to English narration if specific language TTS failed
+        try:
+            import edge_tts
+            communicate = edge_tts.Communicate(DEMO_NARRATION, "en-IN-NeerjaNeural")
+            async for chunk in communicate.stream():
+                if chunk["type"] == "audio":
+                    chunks.append(chunk["data"])
+        except Exception:
+            pass
+
+    if not chunks:
+        raise HTTPException(status_code=502, detail=f"Narration unavailable for '{lang}'")
+
+    audio_bytes = b"".join(chunks)
+
+    # Save to cache
+    try:
+        cache_dest = cached_candidates[0]
+        os.makedirs(os.path.dirname(cache_dest), exist_ok=True)
+        with open(cache_dest, "wb") as f:
+            f.write(audio_bytes)
+    except Exception:
+        pass
+
+    return Response(
+        content=audio_bytes,
+        media_type="audio/mpeg",
+        headers={
+            "X-Demo-Narration-Text": quote(caption_text),
+            "X-Demo-Narration-Lang": lang,
+            "Cache-Control": "public, max-age=86400",
+        },
+    )
+
+
 @app.post("/translation-mode/set")
 @limiter.limit("60/minute")
 async def set_translation_languages(

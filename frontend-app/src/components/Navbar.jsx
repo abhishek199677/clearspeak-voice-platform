@@ -44,6 +44,25 @@ export default function Navbar() {
     return currentRoute.startsWith(target)
   }
 
+  // Try Demo = the interactive speech demo (VoiceChat), never the video.
+  // Already on the page: scroll to it. Otherwise route there, then scroll once
+  // the widget has mounted (App scrolls to top on every route change).
+  const goDemo = (e) => {
+    e.preventDefault()
+    const scroll = () => {
+      const el = document.getElementById('voice-chat')
+      if (!el) return false
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      return true
+    }
+    if (scroll()) return
+    window.location.hash = '#/speech'
+    let tries = 0
+    const timer = setInterval(() => {
+      if (scroll() || ++tries > 40) clearInterval(timer)
+    }, 50)
+  }
+
   return (
     <>
       <motion.nav
@@ -80,7 +99,11 @@ export default function Navbar() {
           </div>
 
           <div className="hidden lg:flex items-center gap-3">
-            <a href="#/speech" className="px-5 py-2.5 text-[13px] font-medium text-gray-300 hover:text-white transition-colors duration-200">
+            <a
+              href="#/speech"
+              onClick={goDemo}
+              className="px-5 py-2.5 text-[13px] font-medium text-gray-300 hover:text-white transition-colors duration-200"
+            >
               Try Demo
             </a>
             <motion.button
@@ -126,7 +149,16 @@ export default function Navbar() {
                 ))}
               </div>
               <div className="mt-6 pt-6 border-t border-white/[0.06] space-y-4">
-                <a href="#/speech" onClick={() => setIsMobileOpen(false)} className="block text-[15px] text-gray-400 hover:text-white">Try Demo</a>
+                <a
+                  href="#/speech"
+                  onClick={(e) => {
+                    setIsMobileOpen(false)
+                    goDemo(e)
+                  }}
+                  className="block text-[15px] text-gray-400 hover:text-white"
+                >
+                  Try Demo
+                </a>
                 <button className="w-full px-6 py-3 bg-gradient-to-r from-[#6C3CE1] to-[#9B6DFF] rounded-full text-[14px] font-semibold">
                   Get Started
                 </button>

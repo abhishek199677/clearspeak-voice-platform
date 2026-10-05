@@ -6,6 +6,7 @@ Supports binary audio chunks for efficient streaming and translation mode.
 
 import asyncio
 import json
+import re
 import struct
 from datetime import datetime
 from typing import Dict, Optional, Set, Any
@@ -56,6 +57,30 @@ def _resample_pcm16(pcm: bytes, src_rate: int, dst_rate: int) -> bytes:
     positions = np.linspace(0, samples.size - 1, n_out)
     resampled = np.interp(positions, np.arange(samples.size), samples)
     return resampled.astype(np.int16).tobytes()
+
+
+# Phrases like "switch to translation mode", "change agent mode", "go back to agent"
+_MODE_VERBS = r"(?:switch|change|go|move|turn|set|start|enable|use)"
+_MODE_SWITCH_RE = re.compile(
+    rf"{_MODE_VERBS}(?:\s+\w+){{0,4}}\s+\bto\s+(translation|agent)(?:\s+mode)?\b"
+    rf"|{_MODE_VERBS}(?:\s+\w+){{0,3}}\s+\b(translation|agent)\s+mode\b",
+    re.IGNORECASE,
+)
+_MODE_BARE = {"translation mode", "agent mode", "translation", "agent", "mode translation", "mode agent"}
+
+
+def detect_mode_switch(text: Optional[str]) -> Optional[str]:
+    """Return 'translation'/'agent' if the text is a request to change mode."""
+    normalized = " ".join((text or "").lower().split())
+    if not normalized:
+        return None
+
+    match = _MODE_SWITCH_RE.search(normalized)
+    if match:
+        return (match.group(1) or match.group(2)).lower()
+    if normalized in _MODE_BARE:
+        return "agent" if "agent" in normalized else "translation"
+    return None
 
 
 class ConnectionManager:
@@ -621,9 +646,41 @@ class VoiceWebSocketHandler:
         # Fallback: process the chunk directly
         await self._process_utterance(session_id, audio_data)
     
+    async def _handle_mode_switch(self, session_id: str, content: str) -> bool:
+        """Handle a request like "switch to translation mode". Returns True if consumed."""
+        target = detect_mode_switch(content)
+        if not target:
+            return False
+
+        wanted = PipelineMode.TRANSLATION if target == "translation" else PipelineMode.AGENT
+        current = self.connection_manager.get_session_mode(session_id)
+        label = "Translation" if target == "translation" else "Agent"
+
+        if current != wanted:
+            self.connection_manager.set_session_mode(session_id, wanted)
+            logger.info("Pipeline mode switched by command", session_id=session_id, mode=target)
+            await self.connection_manager.send_json(session_id, {
+                "type": "mode_set",
+                "mode": target,
+                "session_id": session_id
+            })
+
+        await self.connection_manager.send_json(session_id, {
+            "type": "text",
+            "session_id": session_id,
+            "text": (
+                f"Switched to {label} mode."
+                if current != wanted else f"You're already in {label} mode."
+            )
+        })
+        return True
+
     async def _handle_text_message(self, session_id: str, message: VoiceMessage):
         """Handle incoming text message."""
         if not message.text:
+            return
+
+        if await self._handle_mode_switch(session_id, message.text):
             return
 
         if not self.pipeline:
@@ -697,6 +754,10 @@ class VoiceWebSocketHandler:
                     }
                 )
             
+            # Natural-language mode switch, e.g. "switch to translation mode"
+            if content and await self._handle_mode_switch(session_id, content):
+                return
+
             # If in agent mode, process through LLM pipeline
             mode = self.connection_manager.get_session_mode(session_id)
             if mode == PipelineMode.AGENT and content and self.pipeline:
